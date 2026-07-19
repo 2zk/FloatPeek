@@ -1,0 +1,12 @@
+# Mac
+.DS_Store
+
+# Windows
+Thumbs.db
+desktop.ini
+
+# Swift
+.build/
+.build-*/
+.swiftpm/
+DerivedData/
