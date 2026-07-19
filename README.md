@@ -6,7 +6,8 @@ FloatPeek is a lightweight macOS image and PDF browser that opens with a global 
 
 ## 日本語
 
-FloatPeek は、よく使う画像フォルダをグローバルショートカットですばやく表示する macOS アプリです。複数のフォルダをタブとして登録し、画像や PDF の確認、Quick Look、コピー、ドラッグ＆ドロップなどを小さなフローティングウィンドウから行えます。
+スクリーンショット保管フォルダの画像を小さく一覧表示し、手軽にアプリへ共有・コピーするために作成しました。
+ショートカットでの表示・非表示切替と、アプリが常に一番手前に表示されるのが特徴。
 
 ### 主な機能
 
@@ -223,7 +224,8 @@ GitHub の `2zk/FloatPeek` で次を確認します。
 
 ## English
 
-FloatPeek is a macOS app for quickly opening frequently used image folders with a global keyboard shortcut. Register multiple folders as tabs, then browse images and PDFs, use Quick Look, copy files, or drag them into other apps from a compact floating window.
+I created this app to display a thumbnail list of images from the screenshot folder, making it easy to copy or share them with other applications.
+Key features include toggling visibility via a keyboard shortcut and keeping the app window always on top.
 
 ### Features
 
