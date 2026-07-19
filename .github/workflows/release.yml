@@ -1,0 +1,106 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: macos-15
+    env:
+      HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
+
+    steps:
+      - name: ソースコードを取得
+        uses: actions/checkout@v6
+
+      - name: タグとシークレットを検証
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          version="${GITHUB_REF_NAME#v}"
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "タグは vX.Y.Z 形式で指定してください: $GITHUB_REF_NAME" >&2
+            exit 1
+          fi
+
+          if [[ -z "$HOMEBREW_TAP_GITHUB_TOKEN" ]]; then
+            echo "GitHub Actions secret が未設定です: HOMEBREW_TAP_GITHUB_TOKEN" >&2
+            exit 1
+          fi
+
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+
+      - name: ad-hoc 署名のリリースを作成
+        env:
+          BUILD_NUMBER: ${{ github.run_number }}
+          SIGNING_IDENTITY: "-"
+        run: ./Scripts/build-release.sh "$VERSION"
+
+      - name: GitHub Release を公開
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          archive="dist/FloatPeek-$VERSION.zip"
+          checksum="$archive.sha256"
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" "$archive" "$checksum" --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" \
+              "$archive" \
+              "$checksum" \
+              --generate-notes \
+              --title "FloatPeek $VERSION" \
+              --verify-tag
+          fi
+
+      - name: Homebrew Tap を取得
+        uses: actions/checkout@v6
+        with:
+          repository: 2zk/homebrew-tap
+          token: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
+          path: homebrew-tap
+
+      - name: Cask を生成・検証
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          sha256="$(awk '{print $1}' "dist/FloatPeek-$VERSION.zip.sha256")"
+          mkdir -p homebrew-tap/Casks
+          ./Scripts/render-homebrew-cask.sh "$VERSION" "$sha256" > homebrew-tap/Casks/floatpeek.rb
+
+          brew tap --custom-remote 2zk/tap "$GITHUB_WORKSPACE/homebrew-tap"
+          installed_tap_directory="$(brew --repository 2zk/tap)"
+          mkdir -p "$installed_tap_directory/Casks"
+          cp homebrew-tap/Casks/floatpeek.rb "$installed_tap_directory/Casks/floatpeek.rb"
+          brew style --cask 2zk/tap/floatpeek
+
+      - name: Homebrew Tap を更新
+        working-directory: homebrew-tap
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ -z "$(git status --porcelain -- Casks/floatpeek.rb)" ]]; then
+            echo "Cask はすでに最新です。"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Casks/floatpeek.rb
+          git commit -m "FloatPeek $VERSION に更新"
+          git push

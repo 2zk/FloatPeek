@@ -10,3 +10,4 @@ desktop.ini
 .build-*/
 .swiftpm/
 DerivedData/
+dist/
