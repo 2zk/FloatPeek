@@ -11,6 +11,8 @@ protocol FileActionHandling {
 
     @discardableResult
     func revealInFinder(_ fileURLs: [URL]) -> Bool
+
+    func moveToTrash(_ fileURLs: [URL]) async throws
 }
 
 struct FileActionManager: FileActionHandling {
@@ -44,5 +46,13 @@ struct FileActionManager: FileActionHandling {
 
         NSWorkspace.shared.activateFileViewerSelecting(fileURLs)
         return true
+    }
+
+    func moveToTrash(_ fileURLs: [URL]) async throws {
+        guard !fileURLs.isEmpty else {
+            return
+        }
+
+        _ = try await NSWorkspace.shared.recycle(fileURLs)
     }
 }

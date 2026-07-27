@@ -18,6 +18,8 @@ final class ImageBrowserViewModel: ObservableObject {
     @Published private(set) var displayState: DisplayState = .noFolderSelected
     @Published private(set) var sortOption: FileSortOption = .addedAt
     @Published private(set) var isReloading = false
+    @Published private(set) var isMovingToTrash = false
+    @Published private(set) var fileActionErrorMessage: String?
     @Published private var selection = ImageSelection()
 
     private let imageFileLoader: ImageFileLoader
@@ -28,6 +30,7 @@ final class ImageBrowserViewModel: ObservableObject {
     private var monitoringTask: Task<Void, Never>?
     private var reloadTask: Task<Void, Never>?
     private var reloadGeneration = 0
+    private var selectionRevision = 0
 
     init(
         initialFolderURL: URL? = nil,
@@ -158,6 +161,7 @@ final class ImageBrowserViewModel: ObservableObject {
 
     func selectImage(_ image: ImageFile, mode: SelectionMode = .replace) {
         selection.select(image.id, mode: mode, orderedIDs: images.map(\.id))
+        selectionRevision += 1
     }
 
     func setSortOption(_ sortOption: FileSortOption) {
@@ -173,12 +177,26 @@ final class ImageBrowserViewModel: ObservableObject {
     }
 
     @discardableResult
-    func moveSelection(_ direction: SelectionDirection, columnCount: Int) -> Bool {
-        selection.move(direction, columnCount: columnCount, orderedIDs: images.map(\.id))
+    func moveSelection(
+        _ direction: SelectionDirection,
+        columnCount: Int,
+        extendingSelection: Bool = false
+    ) -> Bool {
+        let didMove = selection.move(
+            direction,
+            columnCount: columnCount,
+            orderedIDs: images.map(\.id),
+            extendingSelection: extendingSelection
+        )
+        if didMove {
+            selectionRevision += 1
+        }
+        return didMove
     }
 
     func openImage(_ image: ImageFile) {
         selection.select(image.id, mode: .replace, orderedIDs: images.map(\.id))
+        selectionRevision += 1
         fileOpener.open(image.url)
     }
 
@@ -209,6 +227,91 @@ final class ImageBrowserViewModel: ObservableObject {
     @discardableResult
     func revealInFinder(_ image: ImageFile) -> Bool {
         fileActionManager.revealInFinder(actionImages(for: image).map(\.url))
+    }
+
+    @discardableResult
+    func moveSelectedImagesToTrash() -> Bool {
+        moveToTrash(selectedImages)
+    }
+
+    @discardableResult
+    func moveImagesToTrash(for image: ImageFile) -> Bool {
+        moveToTrash(actionImages(for: image))
+    }
+
+    private func moveToTrash(_ targetImages: [ImageFile]) -> Bool {
+        guard !isMovingToTrash else {
+            return true
+        }
+
+        guard !targetImages.isEmpty else {
+            return false
+        }
+
+        let targetIDs = Set(targetImages.map(\.id))
+        let requestedFolderURL = folderURL
+        let focusedIDAtRequest = selection.focusedID
+        let originalFocusedIndex = focusedIDAtRequest
+            .flatMap { focusedID in images.firstIndex(where: { $0.id == focusedID }) }
+            ?? images.firstIndex(where: { targetIDs.contains($0.id) })
+            ?? 0
+        let selectionRevisionAtRequest = selectionRevision
+        let fileActionManager = fileActionManager
+
+        isMovingToTrash = true
+        fileActionErrorMessage = nil
+
+        Task { [weak self] in
+            do {
+                try await fileActionManager.moveToTrash(targetImages.map(\.url))
+
+                guard let self else {
+                    return
+                }
+
+                self.isMovingToTrash = false
+                guard self.folderURL == requestedFolderURL else {
+                    return
+                }
+
+                self.removeRecycledImages(
+                    withIDs: targetIDs,
+                    originalFocusedIndex: originalFocusedIndex,
+                    shouldAdvanceSelection: focusedIDAtRequest.map(targetIDs.contains) == true
+                        && self.selectionRevision == selectionRevisionAtRequest
+                )
+                self.reload()
+            } catch {
+                guard let self else {
+                    return
+                }
+
+                self.isMovingToTrash = false
+                if targetImages.count == 1, let targetImage = targetImages.first {
+                    self.fileActionErrorMessage = LocalizationManager.shared.localizedFormat(
+                        "%@ could not be moved to the Trash.\n%@",
+                        targetImage.fileName,
+                        error.localizedDescription
+                    )
+                } else {
+                    self.fileActionErrorMessage = LocalizationManager.shared.localizedFormat(
+                        "%d files could not be moved to the Trash.\n%@",
+                        targetImages.count,
+                        error.localizedDescription
+                    )
+                }
+
+                if self.folderURL == requestedFolderURL {
+                    self.reload()
+                }
+            }
+        }
+
+        return true
+    }
+
+    func dismissFileActionError() {
+        fileActionErrorMessage = nil
     }
 
     private func reconcileSelection() {
@@ -251,6 +354,32 @@ final class ImageBrowserViewModel: ObservableObject {
         }
 
         return selectedImages
+    }
+
+    private func removeRecycledImages(
+        withIDs recycledIDs: Set<ImageFile.ID>,
+        originalFocusedIndex: Int,
+        shouldAdvanceSelection: Bool
+    ) {
+        images.removeAll { recycledIDs.contains($0.id) }
+
+        if shouldAdvanceSelection {
+            if images.isEmpty {
+                selection.clear()
+            } else {
+                let nextIndex = min(originalFocusedIndex, images.count - 1)
+                selection.select(
+                    images[nextIndex].id,
+                    mode: .replace,
+                    orderedIDs: images.map(\.id)
+                )
+            }
+        } else {
+            reconcileSelection()
+        }
+
+        selectionRevision += 1
+        displayState = images.isEmpty ? .noImages : .loaded
     }
 
 }

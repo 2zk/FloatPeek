@@ -79,6 +79,45 @@ final class ImageBrowserFileActionTests: XCTestCase {
         XCTAssertNil(HandledKey(event: plainC))
     }
 
+    func testDeleteKeysAreHandledWithoutModifiersOrKeyRepeat() throws {
+        for keyCode: UInt16 in [51, 117] {
+            let deleteKey = try XCTUnwrap(
+                makeKeyEvent(modifierFlags: [], keyCode: keyCode)
+            )
+            guard case .moveToTrash = HandledKey(event: deleteKey) else {
+                return XCTFail("Deleteキーがゴミ箱への移動として認識されない")
+            }
+
+            let modifiedDelete = try XCTUnwrap(
+                makeKeyEvent(modifierFlags: .command, keyCode: keyCode)
+            )
+            XCTAssertNil(HandledKey(event: modifiedDelete))
+
+            let repeatedDelete = try XCTUnwrap(
+                makeKeyEvent(modifierFlags: [], keyCode: keyCode, isARepeat: true)
+            )
+            XCTAssertNil(HandledKey(event: repeatedDelete))
+        }
+    }
+
+    func testArrowKeyReportsWhetherShiftExtendsSelection() throws {
+        let shiftedArrow = try XCTUnwrap(
+            makeKeyEvent(modifierFlags: .shift, keyCode: 124)
+        )
+        guard case .rightArrow(let extendingSelection) = HandledKey(event: shiftedArrow) else {
+            return XCTFail("Shift + 右矢印が移動操作として認識されない")
+        }
+        XCTAssertTrue(extendingSelection)
+
+        let plainArrow = try XCTUnwrap(
+            makeKeyEvent(modifierFlags: [], keyCode: 124)
+        )
+        guard case .rightArrow(let extendingSelection) = HandledKey(event: plainArrow) else {
+            return XCTFail("右矢印が移動操作として認識されない")
+        }
+        XCTAssertFalse(extendingSelection)
+    }
+
     func testContextMenuContainsExpectedActionsAndSelectsUnselectedItem() throws {
         let interactionView = FileDragInteractionNSView()
         var didReplaceSelection = false
@@ -94,8 +133,100 @@ final class ImageBrowserFileActionTests: XCTestCase {
         XCTAssertTrue(didReplaceSelection)
         XCTAssertEqual(
             menu.items.filter { !$0.isSeparatorItem }.map(\.title),
-            ["Open", "Quick Look", "Copy", "Copy File Path", "Reveal in Finder"].map(localized)
+            [
+                "Open",
+                "Quick Look",
+                "Copy",
+                "Copy File Path",
+                "Reveal in Finder",
+                "Move to Trash",
+            ].map(localized)
         )
+    }
+
+    func testMoveSelectedImagesToTrashMovesAllSelectedImagesAndSelectsNext() async throws {
+        viewModel.setSortOption(.fileName)
+        let first = try image(named: "first.png")
+        let second = try image(named: "second.png")
+        let third = try image(named: "third.png")
+        viewModel.selectImage(first)
+        viewModel.selectImage(second, mode: .toggle)
+
+        XCTAssertTrue(viewModel.moveSelectedImagesToTrash())
+        try await waitForTrashOperation()
+
+        XCTAssertEqual(fileActionManager.movedToTrashURLs, [first.url, second.url])
+        XCTAssertEqual(viewModel.images.map(\.fileName), ["third.png"])
+        XCTAssertEqual(viewModel.selectedImage?.id, third.id)
+        XCTAssertEqual(viewModel.selectedImageIDs, [third.id])
+    }
+
+    func testMoveSelectedContextImageMovesAllSelectedImages() async throws {
+        viewModel.setSortOption(.fileName)
+        let first = try image(named: "first.png")
+        let second = try image(named: "second.png")
+        let third = try image(named: "third.png")
+        viewModel.selectImage(first)
+        viewModel.selectImage(second, mode: .toggle)
+
+        XCTAssertTrue(viewModel.moveImagesToTrash(for: first))
+        try await waitForTrashOperation()
+
+        XCTAssertEqual(fileActionManager.movedToTrashURLs, [first.url, second.url])
+        XCTAssertEqual(viewModel.selectedImage?.id, third.id)
+        XCTAssertEqual(viewModel.selectedImageIDs, [third.id])
+    }
+
+    func testMoveUnselectedContextImageMovesOnlyTargetImage() async throws {
+        viewModel.setSortOption(.fileName)
+        let first = try image(named: "first.png")
+        let third = try image(named: "third.png")
+        viewModel.selectImage(first)
+
+        XCTAssertTrue(viewModel.moveImagesToTrash(for: third))
+        try await waitForTrashOperation()
+
+        XCTAssertEqual(fileActionManager.movedToTrashURLs, [third.url])
+        XCTAssertEqual(viewModel.selectedImage?.id, first.id)
+        XCTAssertEqual(viewModel.selectedImageIDs, [first.id])
+    }
+
+    func testMovingLastThenOnlyRemainingImagesUpdatesSelection() async throws {
+        viewModel.setSortOption(.fileName)
+        let third = try image(named: "third.png")
+        viewModel.selectImage(third)
+
+        XCTAssertTrue(viewModel.moveSelectedImagesToTrash())
+        try await waitForTrashOperation()
+        XCTAssertEqual(viewModel.selectedImage?.fileName, "second.png")
+
+        XCTAssertTrue(viewModel.moveSelectedImagesToTrash())
+        try await waitForTrashOperation()
+        XCTAssertEqual(viewModel.selectedImage?.fileName, "first.png")
+
+        XCTAssertTrue(viewModel.moveSelectedImagesToTrash())
+        try await waitForTrashOperation()
+        XCTAssertNil(viewModel.selectedImage)
+        XCTAssertEqual(viewModel.displayState, .noImages)
+    }
+
+    func testMoveToTrashFailurePreservesImagesAndSelection() async throws {
+        let first = try image(named: "first.png")
+        let second = try image(named: "second.png")
+        viewModel.selectImage(first)
+        viewModel.selectImage(second, mode: .toggle)
+        fileActionManager.moveToTrashError = NSError(
+            domain: "FloatPeekTests",
+            code: 1,
+            userInfo: [NSLocalizedDescriptionKey: "Test failure"]
+        )
+
+        XCTAssertTrue(viewModel.moveSelectedImagesToTrash())
+        try await waitForTrashOperation()
+
+        XCTAssertEqual(viewModel.images.count, 3)
+        XCTAssertEqual(viewModel.selectedImageIDs, [first.id, second.id])
+        XCTAssertTrue(viewModel.fileActionErrorMessage?.contains("2") == true)
     }
 
     func testChangingTabFolderReloadsImagesFromNewFolder() async throws {
@@ -136,7 +267,20 @@ final class ImageBrowserFileActionTests: XCTestCase {
         XCTAssertFalse(viewModel.isReloading)
     }
 
-    private func makeKeyEvent(modifierFlags: NSEvent.ModifierFlags) -> NSEvent? {
+    private func waitForTrashOperation() async throws {
+        for _ in 0..<100 where viewModel.isMovingToTrash || viewModel.isReloading {
+            try await Task.sleep(nanoseconds: 10_000_000)
+        }
+
+        XCTAssertFalse(viewModel.isMovingToTrash)
+        XCTAssertFalse(viewModel.isReloading)
+    }
+
+    private func makeKeyEvent(
+        modifierFlags: NSEvent.ModifierFlags,
+        keyCode: UInt16 = 8,
+        isARepeat: Bool = false
+    ) -> NSEvent? {
         NSEvent.keyEvent(
             with: .keyDown,
             location: .zero,
@@ -146,8 +290,8 @@ final class ImageBrowserFileActionTests: XCTestCase {
             context: nil,
             characters: "c",
             charactersIgnoringModifiers: "c",
-            isARepeat: false,
-            keyCode: 8
+            isARepeat: isARepeat,
+            keyCode: keyCode
         )
     }
 }
@@ -156,6 +300,8 @@ private final class TestFileActionManager: FileActionHandling {
     private(set) var copiedFileURLs: [URL] = []
     private(set) var copiedPathURLs: [URL] = []
     private(set) var revealedURLs: [URL] = []
+    private(set) var movedToTrashURLs: [URL] = []
+    var moveToTrashError: Error?
 
     func copyFiles(_ fileURLs: [URL]) -> Bool {
         copiedFileURLs = fileURLs
@@ -170,5 +316,16 @@ private final class TestFileActionManager: FileActionHandling {
     func revealInFinder(_ fileURLs: [URL]) -> Bool {
         revealedURLs = fileURLs
         return !fileURLs.isEmpty
+    }
+
+    func moveToTrash(_ fileURLs: [URL]) async throws {
+        if let moveToTrashError {
+            throw moveToTrashError
+        }
+
+        movedToTrashURLs.append(contentsOf: fileURLs)
+        for fileURL in fileURLs {
+            try FileManager.default.removeItem(at: fileURL)
+        }
     }
 }

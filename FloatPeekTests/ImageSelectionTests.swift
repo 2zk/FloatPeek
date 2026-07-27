@@ -49,6 +49,44 @@ final class ImageSelectionTests: XCTestCase {
         XCTAssertEqual(selection.focusedID, ids[0])
     }
 
+    func testShiftMovingSelectionExpandsAndContractsFromAnchor() {
+        var selection = ImageSelection()
+        selection.select(ids[1], mode: .replace, orderedIDs: ids)
+
+        XCTAssertTrue(
+            selection.move(
+                .down,
+                columnCount: 2,
+                orderedIDs: ids,
+                extendingSelection: true
+            )
+        )
+        XCTAssertEqual(selection.selectedIDs, Set(ids[1...3]))
+        XCTAssertEqual(selection.focusedID, ids[3])
+
+        XCTAssertTrue(
+            selection.move(
+                .right,
+                columnCount: 2,
+                orderedIDs: ids,
+                extendingSelection: true
+            )
+        )
+        XCTAssertEqual(selection.selectedIDs, Set(ids[1...4]))
+        XCTAssertEqual(selection.focusedID, ids[4])
+
+        XCTAssertTrue(
+            selection.move(
+                .left,
+                columnCount: 2,
+                orderedIDs: ids,
+                extendingSelection: true
+            )
+        )
+        XCTAssertEqual(selection.selectedIDs, Set(ids[1...3]))
+        XCTAssertEqual(selection.focusedID, ids[3])
+    }
+
     func testReconcileRemovesMissingItemsAndKeepsOrderedFocus() {
         var selection = ImageSelection()
         selection.select(ids[1], mode: .replace, orderedIDs: ids)

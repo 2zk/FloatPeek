@@ -13,6 +13,7 @@ struct ImageFileTile: View {
     let onCopy: () -> Void
     let onRevealInFinder: () -> Void
     let onCopyPath: () -> Void
+    let onMoveToTrash: () -> Void
 
     @State private var thumbnailState: ThumbnailState = .loading
 
@@ -73,7 +74,8 @@ struct ImageFileTile: View {
                 onPreview: onPreview,
                 onCopy: onCopy,
                 onRevealInFinder: onRevealInFinder,
-                onCopyPath: onCopyPath
+                onCopyPath: onCopyPath,
+                onMoveToTrash: onMoveToTrash
             )
         )
         .task(id: image) {

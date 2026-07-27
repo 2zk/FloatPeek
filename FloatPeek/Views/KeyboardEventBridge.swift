@@ -66,11 +66,12 @@ enum HandledKey: Sendable {
     case `return`
     case escape
     case space
-    case leftArrow
-    case rightArrow
-    case upArrow
-    case downArrow
+    case leftArrow(extendingSelection: Bool)
+    case rightArrow(extendingSelection: Bool)
+    case upArrow(extendingSelection: Bool)
+    case downArrow(extendingSelection: Bool)
     case copy
+    case moveToTrash
 
     init?(event: NSEvent) {
         let modifiers = event.modifierFlags.intersection([.command, .option, .control, .shift])
@@ -83,15 +84,20 @@ enum HandledKey: Sendable {
         case 49:
             self = .space
         case 123:
-            self = .leftArrow
+            self = .leftArrow(extendingSelection: modifiers.contains(.shift))
         case 124:
-            self = .rightArrow
+            self = .rightArrow(extendingSelection: modifiers.contains(.shift))
         case 125:
-            self = .downArrow
+            self = .downArrow(extendingSelection: modifiers.contains(.shift))
         case 126:
-            self = .upArrow
+            self = .upArrow(extendingSelection: modifiers.contains(.shift))
         case 8 where modifiers == .command:
             self = .copy
+        case 51, 117:
+            guard modifiers.isEmpty, !event.isARepeat else {
+                return nil
+            }
+            self = .moveToTrash
         default:
             return nil
         }

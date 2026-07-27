@@ -36,6 +36,10 @@
 "Copy" = "Copy";
 "Copy File Path" = "Copy File Path";
 "Reveal in Finder" = "Reveal in Finder";
+"Move to Trash" = "Move to Trash";
+"Could not Move to Trash" = "Could not Move to Trash";
+"%@ could not be moved to the Trash.\n%@" = "%@ could not be moved to the Trash.\n%@";
+"%d files could not be moved to the Trash.\n%@" = "%d files could not be moved to the Trash.\n%@";
 "Choose" = "Choose";
 "Choose an image folder for FloatPeek." = "Choose an image folder for FloatPeek.";
 "Space" = "Space";

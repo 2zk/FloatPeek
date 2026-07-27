@@ -15,6 +15,7 @@ struct ImageGridView: View {
     let onCopy: (ImageFile) -> Void
     let onRevealInFinder: (ImageFile) -> Void
     let onCopyPath: (ImageFile) -> Void
+    let onMoveToTrash: (ImageFile) -> Void
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -42,6 +43,9 @@ struct ImageGridView: View {
                             },
                             onCopyPath: {
                                 onCopyPath(image)
+                            },
+                            onMoveToTrash: {
+                                onMoveToTrash(image)
                             }
                         )
                         .id(image.id)

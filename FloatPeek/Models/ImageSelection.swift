@@ -43,7 +43,8 @@ struct ImageSelection {
     mutating func move(
         _ direction: Direction,
         columnCount: Int,
-        orderedIDs: [ImageFile.ID]
+        orderedIDs: [ImageFile.ID],
+        extendingSelection: Bool = false
     ) -> Bool {
         guard !orderedIDs.isEmpty else {
             return false
@@ -73,7 +74,11 @@ struct ImageSelection {
             return false
         }
 
-        replace(with: orderedIDs[targetIndex])
+        if extendingSelection {
+            selectRange(to: orderedIDs[targetIndex], orderedIDs: orderedIDs)
+        } else {
+            replace(with: orderedIDs[targetIndex])
+        }
         return true
     }
 

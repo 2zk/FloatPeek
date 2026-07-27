@@ -17,7 +17,7 @@ FloatPeek is a lightweight macOS image and PDF browser that opens with a global 
 - ファイル名、変更日、追加日による並び替え
 - 単一選択、複数選択、範囲選択
 - Quick Look プレビュー
-- 既定アプリで開く、Finder に表示、ファイルまたはパスのコピー
+- 既定アプリで開く、Finder に表示、ファイルまたはパスのコピー、ゴミ箱への移動
 - 外部アプリへのドラッグ＆ドロップ
 - 表示中フォルダの変更監視と自動再読み込み
 - 日本語・英語表示
@@ -87,9 +87,11 @@ env DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
 | --- | --- |
 | FloatPeek の表示・非表示 | `⌘⇧1`（変更可能） |
 | 選択の移動 | 矢印キー |
+| 範囲選択 | `Shift` + 矢印キー |
 | Quick Look の表示・非表示 | `Space` |
 | 既定アプリで開く | `Return` |
 | 選択中ファイルをコピー | `⌘C` |
+| 選択中ファイルをゴミ箱へ移動 | `Delete` / `Forward Delete` |
 | ウィンドウを非表示 | `Escape` |
 
 マウス操作では、`⌘` を押しながらクリックすると選択を追加・解除でき、`Shift` を押しながらクリックすると範囲選択できます。
@@ -235,7 +237,7 @@ Key features include toggling visibility via a keyboard shortcut and keeping the
 - Sort by file name, date modified, or date added
 - Single, multiple, and range selection
 - Quick Look previews
-- Open with the default app, reveal in Finder, or copy files and paths
+- Open with the default app, reveal in Finder, copy files and paths, or move files to Trash
 - Drag and drop files into other apps
 - Monitor the visible folder and reload automatically when it changes
 - English and Japanese interfaces
@@ -305,9 +307,11 @@ The default global shortcut is `⌘⇧1`.
 | --- | --- |
 | Show or hide FloatPeek | `⌘⇧1` (customizable) |
 | Move the selection | Arrow keys |
+| Extend or contract the selection range | `Shift` + Arrow keys |
 | Show or hide Quick Look | `Space` |
 | Open with the default app | `Return` |
 | Copy selected files | `⌘C` |
+| Move selected files to Trash | `Delete` / `Forward Delete` |
 | Hide the window | `Escape` |
 
 With the mouse, Command-click toggles individual items and Shift-click selects a range.

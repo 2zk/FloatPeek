@@ -50,6 +50,9 @@ struct ContentView: View {
                             },
                             onCopyPath: { image in
                                 viewModel.copyPaths(for: image)
+                            },
+                            onMoveToTrash: { image in
+                                viewModel.moveImagesToTrash(for: image)
                             }
                         )
                         .onAppear {
@@ -143,6 +146,23 @@ struct ContentView: View {
         .sheet(isPresented: $appCoordinator.isShowingSettings) {
             SettingsView(viewModel: makeSettingsViewModel())
         }
+        .alert(
+            localization.localized("Could not Move to Trash"),
+            isPresented: Binding(
+                get: { viewModel.fileActionErrorMessage != nil },
+                set: { isPresented in
+                    if !isPresented {
+                        viewModel.dismissFileActionError()
+                    }
+                }
+            )
+        ) {
+            Button(localization.localized("OK")) {
+                viewModel.dismissFileActionError()
+            }
+        } message: {
+            Text(viewModel.fileActionErrorMessage ?? "")
+        }
     }
 
     @discardableResult
@@ -159,16 +179,34 @@ struct ContentView: View {
             return true
         case .space:
             return previewSelectedImage()
-        case .leftArrow:
-            return viewModel.moveSelection(.left, columnCount: gridColumnCount)
-        case .rightArrow:
-            return viewModel.moveSelection(.right, columnCount: gridColumnCount)
-        case .upArrow:
-            return viewModel.moveSelection(.up, columnCount: gridColumnCount)
-        case .downArrow:
-            return viewModel.moveSelection(.down, columnCount: gridColumnCount)
+        case .leftArrow(let extendingSelection):
+            return viewModel.moveSelection(
+                .left,
+                columnCount: gridColumnCount,
+                extendingSelection: extendingSelection
+            )
+        case .rightArrow(let extendingSelection):
+            return viewModel.moveSelection(
+                .right,
+                columnCount: gridColumnCount,
+                extendingSelection: extendingSelection
+            )
+        case .upArrow(let extendingSelection):
+            return viewModel.moveSelection(
+                .up,
+                columnCount: gridColumnCount,
+                extendingSelection: extendingSelection
+            )
+        case .downArrow(let extendingSelection):
+            return viewModel.moveSelection(
+                .down,
+                columnCount: gridColumnCount,
+                extendingSelection: extendingSelection
+            )
         case .copy:
             return viewModel.copySelectedImages()
+        case .moveToTrash:
+            return viewModel.moveSelectedImagesToTrash()
         }
     }
 

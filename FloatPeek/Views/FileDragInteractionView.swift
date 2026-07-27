@@ -11,6 +11,7 @@ struct FileDragInteractionView: NSViewRepresentable {
     let onCopy: () -> Void
     let onRevealInFinder: () -> Void
     let onCopyPath: () -> Void
+    let onMoveToTrash: () -> Void
 
     func makeNSView(context: Context) -> FileDragInteractionNSView {
         let view = FileDragInteractionNSView()
@@ -32,6 +33,7 @@ struct FileDragInteractionView: NSViewRepresentable {
         view.onCopy = onCopy
         view.onRevealInFinder = onRevealInFinder
         view.onCopyPath = onCopyPath
+        view.onMoveToTrash = onMoveToTrash
     }
 }
 
@@ -45,6 +47,7 @@ final class FileDragInteractionNSView: NSView, NSDraggingSource {
     var onCopy: (() -> Void)?
     var onRevealInFinder: (() -> Void)?
     var onCopyPath: (() -> Void)?
+    var onMoveToTrash: (() -> Void)?
 
     private var didStartDrag = false
 
@@ -111,6 +114,10 @@ final class FileDragInteractionNSView: NSView, NSDraggingSource {
         menu.addItem(
             makeMenuItem(title: localized("Reveal in Finder"), action: #selector(revealInFinderFromMenu))
         )
+        menu.addItem(.separator())
+        menu.addItem(
+            makeMenuItem(title: localized("Move to Trash"), action: #selector(moveToTrashFromMenu))
+        )
         return menu
     }
 
@@ -163,6 +170,10 @@ final class FileDragInteractionNSView: NSView, NSDraggingSource {
 
     @objc private func revealInFinderFromMenu() {
         onRevealInFinder?()
+    }
+
+    @objc private func moveToTrashFromMenu() {
+        onMoveToTrash?()
     }
 
     private func selectionMode(for event: NSEvent) -> ImageBrowserViewModel.SelectionMode {
