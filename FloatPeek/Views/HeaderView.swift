@@ -11,10 +11,6 @@ struct HeaderView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(localization.localized("Tabs"))
-                .font(.caption)
-                .foregroundStyle(.secondary)
-
             if tabs.isEmpty {
                 Text(localization.localized("No tabs configured"))
                     .font(.caption)

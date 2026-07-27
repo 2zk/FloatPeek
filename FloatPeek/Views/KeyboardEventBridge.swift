@@ -72,6 +72,8 @@ enum HandledKey: Sendable {
     case downArrow(extendingSelection: Bool)
     case copy
     case moveToTrash
+    case selectNextTab
+    case selectPreviousTab
 
     init?(event: NSEvent) {
         let modifiers = event.modifierFlags.intersection([.command, .option, .control, .shift])
@@ -93,6 +95,10 @@ enum HandledKey: Sendable {
             self = .upArrow(extendingSelection: modifiers.contains(.shift))
         case 8 where modifiers == .command:
             self = .copy
+        case 48 where modifiers == .control:
+            self = .selectNextTab
+        case 48 where modifiers == [.control, .shift]:
+            self = .selectPreviousTab
         case 51, 117:
             guard modifiers.isEmpty, !event.isARepeat else {
                 return nil

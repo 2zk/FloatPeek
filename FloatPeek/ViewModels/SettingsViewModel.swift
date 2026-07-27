@@ -87,6 +87,17 @@ final class SettingsViewModel: ObservableObject {
         }
     }
 
+    func moveTab(id: FolderTab.ID, to targetID: FolderTab.ID) {
+        guard let sourceIndex = tabs.firstIndex(where: { $0.id == id }),
+              let targetIndex = tabs.firstIndex(where: { $0.id == targetID }),
+              sourceIndex != targetIndex else {
+            return
+        }
+
+        let movedTab = tabs.remove(at: sourceIndex)
+        tabs.insert(movedTab, at: min(targetIndex, tabs.count))
+    }
+
     func chooseFolder(for id: FolderTab.ID) {
         guard let index = tabs.firstIndex(where: { $0.id == id }),
               let folderURL = folderChooser.chooseFolder(initialURL: tabs[index].folderURL) else {

@@ -1,10 +1,12 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var localization: LocalizationManager
 
     @StateObject private var viewModel: SettingsViewModel
+    @State private var draggedTabID: FolderTab.ID?
 
     init(viewModel: SettingsViewModel) {
         _viewModel = StateObject(wrappedValue: viewModel)
@@ -51,6 +53,18 @@ struct SettingsView: View {
                     LazyVStack(spacing: 8) {
                         ForEach($viewModel.tabs) { $tab in
                             tabSettingsRow(tab: $tab)
+                                .onDrop(
+                                    of: [UTType.text],
+                                    delegate: FolderReorderDropDelegate(
+                                        targetID: tab.id,
+                                        draggedTabID: $draggedTabID,
+                                        onMove: { sourceID, targetID in
+                                            withAnimation {
+                                                viewModel.moveTab(id: sourceID, to: targetID)
+                                            }
+                                        }
+                                    )
+                                )
                         }
                     }
                 }
@@ -137,6 +151,16 @@ struct SettingsView: View {
 
         return VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
+                Image(systemName: "line.3.horizontal")
+                    .foregroundStyle(.secondary)
+                    .frame(width: 18, height: 28)
+                    .contentShape(Rectangle())
+                    .help(localization.localized("Drag to reorder"))
+                    .onDrag {
+                        draggedTabID = tabID
+                        return NSItemProvider(object: tabID.uuidString as NSString)
+                    }
+
                 Button {
                     viewModel.selectTab(id: tabID)
                 } label: {
@@ -168,7 +192,7 @@ struct SettingsView: View {
             .foregroundStyle(.secondary)
             .lineLimit(1)
             .truncationMode(.middle)
-            .padding(.leading, 28)
+            .padding(.leading, 54)
         }
         .padding(10)
         .background {
@@ -177,4 +201,28 @@ struct SettingsView: View {
         }
     }
 
+}
+
+private struct FolderReorderDropDelegate: DropDelegate {
+    let targetID: FolderTab.ID
+    @Binding var draggedTabID: FolderTab.ID?
+    let onMove: (FolderTab.ID, FolderTab.ID) -> Void
+
+    func dropEntered(info: DropInfo) {
+        guard let draggedTabID,
+              draggedTabID != targetID else {
+            return
+        }
+
+        onMove(draggedTabID, targetID)
+    }
+
+    func dropUpdated(info: DropInfo) -> DropProposal? {
+        DropProposal(operation: .move)
+    }
+
+    func performDrop(info: DropInfo) -> Bool {
+        draggedTabID = nil
+        return true
+    }
 }

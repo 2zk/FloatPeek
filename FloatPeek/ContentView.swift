@@ -207,6 +207,10 @@ struct ContentView: View {
             return viewModel.copySelectedImages()
         case .moveToTrash:
             return viewModel.moveSelectedImagesToTrash()
+        case .selectNextTab:
+            return tabManager.selectNextTab()
+        case .selectPreviousTab:
+            return tabManager.selectPreviousTab()
         }
     }
 

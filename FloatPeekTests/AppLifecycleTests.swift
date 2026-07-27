@@ -137,4 +137,44 @@ final class AppLifecycleTests: XCTestCase {
 
         XCTAssertEqual(tabManager.selectedTabID, firstTab.id)
     }
+
+    func testSelectingAdjacentTabsWrapsAround() {
+        let suiteName = "AppLifecycleTests.tabs.adjacent.\(UUID().uuidString)"
+        let userDefaults = UserDefaults(suiteName: suiteName)!
+        defer {
+            userDefaults.removePersistentDomain(forName: suiteName)
+        }
+        let firstTab = FolderTab(name: "First")
+        let secondTab = FolderTab(name: "Second")
+        let thirdTab = FolderTab(name: "Third")
+        let tabManager = FolderTabManager(userDefaults: userDefaults)
+
+        tabManager.replaceTabs([firstTab, secondTab, thirdTab], selectedTabID: firstTab.id)
+
+        XCTAssertTrue(tabManager.selectNextTab())
+        XCTAssertEqual(tabManager.selectedTabID, secondTab.id)
+        XCTAssertTrue(tabManager.selectNextTab())
+        XCTAssertEqual(tabManager.selectedTabID, thirdTab.id)
+        XCTAssertTrue(tabManager.selectNextTab())
+        XCTAssertEqual(tabManager.selectedTabID, firstTab.id)
+
+        XCTAssertTrue(tabManager.selectPreviousTab())
+        XCTAssertEqual(tabManager.selectedTabID, thirdTab.id)
+    }
+
+    func testSelectingAdjacentTabRequiresMultipleTabs() {
+        let suiteName = "AppLifecycleTests.tabs.single.\(UUID().uuidString)"
+        let userDefaults = UserDefaults(suiteName: suiteName)!
+        defer {
+            userDefaults.removePersistentDomain(forName: suiteName)
+        }
+        let onlyTab = FolderTab(name: "Only")
+        let tabManager = FolderTabManager(userDefaults: userDefaults)
+
+        tabManager.replaceTabs([onlyTab], selectedTabID: onlyTab.id)
+
+        XCTAssertFalse(tabManager.selectNextTab())
+        XCTAssertFalse(tabManager.selectPreviousTab())
+        XCTAssertEqual(tabManager.selectedTabID, onlyTab.id)
+    }
 }

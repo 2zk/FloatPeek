@@ -118,6 +118,34 @@ final class ImageBrowserFileActionTests: XCTestCase {
         XCTAssertFalse(extendingSelection)
     }
 
+    func testControlTabShortcutsSelectAdjacentTabs() throws {
+        let nextTab = try XCTUnwrap(
+            makeKeyEvent(modifierFlags: .control, keyCode: 48)
+        )
+        guard case .selectNextTab = HandledKey(event: nextTab) else {
+            return XCTFail("Control + Tab が次のフォルダへの切り替えとして認識されない")
+        }
+
+        let previousTab = try XCTUnwrap(
+            makeKeyEvent(modifierFlags: [.control, .shift], keyCode: 48)
+        )
+        guard case .selectPreviousTab = HandledKey(event: previousTab) else {
+            return XCTFail("Control + Shift + Tab が前のフォルダへの切り替えとして認識されない")
+        }
+    }
+
+    func testTabWithOtherModifiersIsNotHandledAsFolderShortcut() throws {
+        let commandTab = try XCTUnwrap(
+            makeKeyEvent(modifierFlags: .command, keyCode: 48)
+        )
+        let controlOptionTab = try XCTUnwrap(
+            makeKeyEvent(modifierFlags: [.control, .option], keyCode: 48)
+        )
+
+        XCTAssertNil(HandledKey(event: commandTab))
+        XCTAssertNil(HandledKey(event: controlOptionTab))
+    }
+
     func testContextMenuContainsExpectedActionsAndSelectsUnselectedItem() throws {
         let interactionView = FileDragInteractionNSView()
         var didReplaceSelection = false

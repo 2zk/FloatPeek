@@ -12,7 +12,8 @@ FloatPeek is a lightweight macOS image and PDF browser that opens with a global 
 ### 主な機能
 
 - グローバルショートカットによるウィンドウの表示・非表示
-- 複数のフォルダタブの登録と切り替え
+- 複数のフォルダの登録と切り替え
+- 設定画面でのドラッグによるフォルダ表示順の変更
 - 画像と PDF のサムネイル表示
 - ファイル名、変更日、追加日による並び替え
 - 単一選択、複数選択、範囲選択
@@ -74,8 +75,8 @@ env DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
 ### 使い方
 
 1. FloatPeek を起動します。
-2. `Settings…` を開き、`Add Tab` でタブを追加します。
-3. タブ名を入力し、表示するフォルダを選択します。
+2. `Settings…` を開き、`Add Folder` でフォルダを追加します。
+3. フォルダ名を入力し、表示するフォルダを選択します。
 4. 必要に応じてグローバルショートカットと言語を変更し、設定を保存します。
 5. グローバルショートカットで FloatPeek を表示または非表示にします。
 
@@ -232,7 +233,8 @@ Key features include toggling visibility via a keyboard shortcut and keeping the
 ### Features
 
 - Show or hide the window with a global keyboard shortcut
-- Register and switch between multiple folder tabs
+- Register and switch between multiple folders
+- Reorder folders by dragging them in Settings
 - Display thumbnails for images and PDFs
 - Sort by file name, date modified, or date added
 - Single, multiple, and range selection
@@ -294,8 +296,8 @@ The built app is generated at:
 ### Usage
 
 1. Launch FloatPeek.
-2. Open `Settings…` and select `Add Tab`.
-3. Enter a tab name and choose the folder to display.
+2. Open `Settings…` and select `Add Folder`.
+3. Enter a folder name and choose the folder to display.
 4. Optionally change the global shortcut and language, then save the settings.
 5. Use the global shortcut to show or hide FloatPeek.
 

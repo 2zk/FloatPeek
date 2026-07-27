@@ -80,6 +80,16 @@ final class FolderTabManager: ObservableObject {
         persistSelectedTab()
     }
 
+    @discardableResult
+    func selectNextTab() -> Bool {
+        selectAdjacentTab(offset: 1)
+    }
+
+    @discardableResult
+    func selectPreviousTab() -> Bool {
+        selectAdjacentTab(offset: -1)
+    }
+
     func replaceTabs(_ newTabs: [FolderTab], selectedTabID: FolderTab.ID?) {
         tabs = newTabs
 
@@ -91,6 +101,18 @@ final class FolderTabManager: ObservableObject {
         }
 
         persist()
+    }
+
+    private func selectAdjacentTab(offset: Int) -> Bool {
+        guard tabs.count > 1,
+              let selectedTabID,
+              let selectedIndex = tabs.firstIndex(where: { $0.id == selectedTabID }) else {
+            return false
+        }
+
+        let nextIndex = (selectedIndex + offset + tabs.count) % tabs.count
+        selectTab(id: tabs[nextIndex].id)
+        return true
     }
 
     private func persist() {

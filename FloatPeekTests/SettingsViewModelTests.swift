@@ -10,7 +10,7 @@ final class SettingsViewModelTests: XCTestCase {
         let addedTabID = context.viewModel.selectedTabID
 
         XCTAssertEqual(context.viewModel.tabs.count, 2)
-        XCTAssertEqual(context.viewModel.tabs.last?.name, "Tab 2")
+        XCTAssertEqual(context.viewModel.tabs.last?.name, "Folder 2")
 
         context.viewModel.removeTab(id: addedTabID!)
 
@@ -28,6 +28,26 @@ final class SettingsViewModelTests: XCTestCase {
 
         XCTAssertEqual(context.viewModel.tabs[0].folderPath, folderURL.path)
         XCTAssertEqual(context.tabManager.tabs, context.initialTabs)
+    }
+
+    func testMovingFolderChangesDraftOrderAndSavePersistsIt() {
+        let context = makeContext()
+        context.viewModel.addTab()
+        context.viewModel.addTab()
+        let movedFolder = context.viewModel.tabs[2]
+        let firstFolder = context.viewModel.tabs[0]
+
+        context.viewModel.moveTab(id: movedFolder.id, to: firstFolder.id)
+
+        XCTAssertEqual(
+            context.viewModel.tabs.map(\.name),
+            ["Folder 3", "First", "Folder 2"]
+        )
+        XCTAssertEqual(context.viewModel.selectedTabID, movedFolder.id)
+        XCTAssertEqual(context.tabManager.tabs, context.initialTabs)
+
+        XCTAssertTrue(context.viewModel.save())
+        XCTAssertEqual(context.tabManager.tabs, context.viewModel.tabs)
     }
 
     func testSuccessfulSaveAppliesAllSettings() {
