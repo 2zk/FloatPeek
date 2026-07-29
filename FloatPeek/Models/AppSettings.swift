@@ -10,11 +10,25 @@ struct AppSettings {
     static let languageKey = "language"
     static let folderTabsKey = "folderTabs"
     static let selectedFolderTabIDKey = "selectedFolderTabID"
+    static let scaleImagesWithWindowKey = "scaleImagesWithWindow"
 
     static let defaultShortcut = KeyboardShortcut(
         keyCode: UInt32(kVK_ANSI_1),
         carbonModifiers: UInt32(cmdKey | shiftKey)
     )
+
+    static func loadScaleImagesWithWindow(
+        from userDefaults: PreferencesStoring = AppEnvironment.preferences
+    ) -> Bool {
+        userDefaults.object(forKey: scaleImagesWithWindowKey) as? Bool ?? true
+    }
+
+    static func saveScaleImagesWithWindow(
+        _ isEnabled: Bool,
+        to userDefaults: PreferencesStoring = AppEnvironment.preferences
+    ) {
+        userDefaults.set(isEnabled, forKey: scaleImagesWithWindowKey)
+    }
 }
 
 struct KeyboardShortcut: Equatable {

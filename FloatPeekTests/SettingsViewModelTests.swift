@@ -3,6 +3,16 @@ import XCTest
 
 @MainActor
 final class SettingsViewModelTests: XCTestCase {
+    func testImageScalingDefaultsToEnabledAndPersistsDisabledValue() {
+        let preferences = InMemoryPreferences()
+
+        XCTAssertTrue(AppSettings.loadScaleImagesWithWindow(from: preferences))
+
+        AppSettings.saveScaleImagesWithWindow(false, to: preferences)
+
+        XCTAssertFalse(AppSettings.loadScaleImagesWithWindow(from: preferences))
+    }
+
     func testAddingAndRemovingTabsKeepsSelectionValid() {
         let context = makeContext()
 
@@ -53,6 +63,7 @@ final class SettingsViewModelTests: XCTestCase {
     func testSuccessfulSaveAppliesAllSettings() {
         let context = makeContext()
         context.viewModel.language = .japanese
+        context.viewModel.scaleImagesWithWindow = false
         context.viewModel.addTab()
 
         XCTAssertTrue(context.viewModel.save())
@@ -61,18 +72,32 @@ final class SettingsViewModelTests: XCTestCase {
         XCTAssertEqual(context.tabManager.tabs, context.viewModel.tabs)
         XCTAssertEqual(context.tabManager.selectedTabID, context.viewModel.selectedTabID)
         XCTAssertEqual(context.shortcutRegistrar.registeredShortcut, context.viewModel.shortcut)
+        XCTAssertFalse(AppSettings.loadScaleImagesWithWindow(from: context.preferences))
+        XCTAssertEqual(context.imageScalingRecorder.values, [false])
+    }
+
+    func testImageScalingDraftIsNotAppliedBeforeSave() {
+        let context = makeContext()
+
+        context.viewModel.scaleImagesWithWindow = false
+
+        XCTAssertTrue(AppSettings.loadScaleImagesWithWindow(from: context.preferences))
+        XCTAssertTrue(context.imageScalingRecorder.values.isEmpty)
     }
 
     func testRegistrationFailureDoesNotApplyDraft() {
         let shortcutRegistrar = TestShortcutRegistrar(shouldRegister: false)
         let context = makeContext(shortcutRegistrar: shortcutRegistrar)
         context.viewModel.language = .japanese
+        context.viewModel.scaleImagesWithWindow = false
         context.viewModel.addTab()
 
         XCTAssertFalse(context.viewModel.save())
 
         XCTAssertEqual(context.localization.language, .english)
         XCTAssertEqual(context.tabManager.tabs, context.initialTabs)
+        XCTAssertTrue(AppSettings.loadScaleImagesWithWindow(from: context.preferences))
+        XCTAssertTrue(context.imageScalingRecorder.values.isEmpty)
         XCTAssertNotNil(context.viewModel.errorMessage)
     }
 
@@ -83,6 +108,7 @@ final class SettingsViewModelTests: XCTestCase {
         let shortcutRegistrar = shortcutRegistrar ?? TestShortcutRegistrar()
         let folderChooser = folderChooser ?? TestFolderChooser()
         let preferences = InMemoryPreferences()
+        let imageScalingRecorder = TestImageScalingRecorder()
         preferences.set(AppLanguage.english.rawValue, forKey: AppSettings.languageKey)
         let localization = LocalizationManager(userDefaults: preferences)
         let tabManager = FolderTabManager(userDefaults: preferences)
@@ -91,21 +117,26 @@ final class SettingsViewModelTests: XCTestCase {
         let viewModel = SettingsViewModel(
             shortcut: AppSettings.defaultShortcut,
             language: localization.language,
+            scaleImagesWithWindow: AppSettings.loadScaleImagesWithWindow(from: preferences),
             tabs: initialTabs,
             selectedTabID: initialTabs[0].id,
             localization: localization,
             tabManager: tabManager,
             shortcutRegistrar: shortcutRegistrar,
             folderChooser: folderChooser,
+            userDefaults: preferences,
             onReloadCurrentTab: {},
-            onToggleWindow: {}
+            onToggleWindow: {},
+            onScaleImagesWithWindowChange: imageScalingRecorder.record
         )
         return TestContext(
             viewModel: viewModel,
             localization: localization,
             tabManager: tabManager,
             initialTabs: initialTabs,
-            shortcutRegistrar: shortcutRegistrar
+            shortcutRegistrar: shortcutRegistrar,
+            preferences: preferences,
+            imageScalingRecorder: imageScalingRecorder
         )
     }
 }
@@ -117,6 +148,17 @@ private struct TestContext {
     let tabManager: FolderTabManager
     let initialTabs: [FolderTab]
     let shortcutRegistrar: TestShortcutRegistrar
+    let preferences: InMemoryPreferences
+    let imageScalingRecorder: TestImageScalingRecorder
+}
+
+@MainActor
+private final class TestImageScalingRecorder {
+    private(set) var values: [Bool] = []
+
+    func record(_ isEnabled: Bool) {
+        values.append(isEnabled)
+    }
 }
 
 private final class TestShortcutRegistrar: ShortcutRegistering {

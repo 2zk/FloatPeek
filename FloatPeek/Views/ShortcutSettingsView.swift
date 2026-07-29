@@ -18,6 +18,10 @@ struct SettingsView: View {
 
             Divider()
 
+            displaySection
+
+            Divider()
+
             languageSection
 
             Divider()
@@ -80,6 +84,18 @@ struct SettingsView: View {
                 )
             }
             .disabled(!viewModel.canReloadCurrentTab)
+        }
+    }
+
+    private var displaySection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(localization.localized("Display"))
+                .font(.headline)
+
+            Toggle(
+                localization.localized("Scale images with window width"),
+                isOn: $viewModel.scaleImagesWithWindow
+            )
         }
     }
 

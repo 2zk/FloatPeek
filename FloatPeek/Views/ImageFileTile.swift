@@ -2,11 +2,11 @@ import AppKit
 import SwiftUI
 
 struct ImageFileTile: View {
-    private static let thumbnailSize = CGSize(width: 120, height: 96)
-
     let image: ImageFile
     let isSelected: Bool
     let selectedDragURLs: [URL]
+    let thumbnailHeight: CGFloat
+    let thumbnailSize: CGSize
     let onSelect: (ImageBrowserViewModel.SelectionMode) -> Void
     let onOpen: () -> Void
     let onPreview: () -> Void
@@ -45,7 +45,7 @@ struct ImageFileTile: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            .frame(height: 96)
+            .frame(height: thumbnailHeight)
             .clipShape(RoundedRectangle(cornerRadius: 10))
 
             Text(image.fileName)
@@ -78,12 +78,12 @@ struct ImageFileTile: View {
                 onMoveToTrash: onMoveToTrash
             )
         )
-        .task(id: image) {
+        .task(id: ThumbnailRequest(image: image, size: thumbnailSize)) {
             thumbnailState = .loading
 
             if let loadedThumbnail = await ThumbnailProvider.shared.thumbnail(
                 for: image,
-                size: Self.thumbnailSize
+                size: thumbnailSize
             ) {
                 guard !Task.isCancelled else {
                     return
@@ -97,6 +97,11 @@ struct ImageFileTile: View {
             }
         }
     }
+}
+
+private struct ThumbnailRequest: Hashable {
+    let image: ImageFile
+    let size: CGSize
 }
 
 private enum ThumbnailState {

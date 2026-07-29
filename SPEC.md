@@ -429,6 +429,10 @@ window.isReleasedWhenClosed = false
 
 画像がない場合、フォルダ未設定の場合、アクセスできない場合は、グリッド部分に状態メッセージを表示する。
 
+`Scale images with window width` が有効な場合、サムネイル一覧を1列表示とし、ウィンドウの横幅に合わせて画像領域を4:3の比率で拡大する。画像自体の縦横比は維持する。サムネイル生成サイズは表示幅へ追従し、32pt単位で更新する。
+
+設定が無効な場合は、幅140ptの固定タイルをウィンドウ幅に応じた複数列で表示し、画像領域の高さは96ptとする。
+
 ## 7.2 状態メッセージ
 
 | 状態 | 表示 |
@@ -458,6 +462,7 @@ Command + ,
 - フォルダ名入力欄
 - 各項目の対象フォルダ選択
 - 選択中フォルダの再読み込み
+- ウィンドウ幅に合わせた画像拡大のON/OFF
 - 表示言語選択
 - 現在のショートカット入力欄
 - `Restore Default`
@@ -517,9 +522,12 @@ windowFrame
 language
 folderTabs
 selectedFolderTabID
+scaleImagesWithWindow
 ```
 
 `selectedFolderPath` は旧バージョンからの移行読み込みにのみ利用する。
+
+`scaleImagesWithWindow` が未保存の場合の既定値は `true` とする。
 
 ## 9.3 KeyboardShortcut
 
@@ -558,6 +566,7 @@ struct KeyboardShortcut: Equatable {
 - Quick Look 更新
 - ウィンドウアクセサ経由の `WindowManager` 設定
 - `AppCoordinator` の改訂番号に応じた再読み込み・監視開始・停止
+- 画像拡大設定に応じたグリッド列数の決定
 - 設定画面の表示と `SettingsViewModel` の生成
 
 ## 10.3 ImageBrowserViewModel
@@ -604,7 +613,7 @@ struct KeyboardShortcut: Equatable {
 
 - 設定画面の下書き状態管理
 - タブ追加・削除・フォルダ選択
-- 言語とショートカットの検証・保存
+- 言語、画像拡大設定、ショートカットの検証・保存
 - 保存成功時だけ実設定へ反映
 
 ## 10.9 FolderManager

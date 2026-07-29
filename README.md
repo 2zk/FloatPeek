@@ -93,6 +93,7 @@ env DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
 | 既定アプリで開く | `Return` |
 | 選択中ファイルをコピー | `⌘C` |
 | 選択中ファイルをゴミ箱へ移動 | `Delete` / `Forward Delete` |
+| フォルダの切替（複数設定の場合） | `Tab` / `⇧Tab` |
 | ウィンドウを非表示 | `Escape` |
 
 マウス操作では、`⌘` を押しながらクリックすると選択を追加・解除でき、`Shift` を押しながらクリックすると範囲選択できます。

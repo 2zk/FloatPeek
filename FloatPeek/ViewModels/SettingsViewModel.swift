@@ -22,6 +22,7 @@ extension FolderManager: FolderChoosing {}
 final class SettingsViewModel: ObservableObject {
     @Published var shortcut: KeyboardShortcut
     @Published var language: AppLanguage
+    @Published var scaleImagesWithWindow: Bool
     @Published var tabs: [FolderTab]
     @Published var selectedTabID: FolderTab.ID?
     @Published private(set) var errorMessage: String?
@@ -34,31 +35,39 @@ final class SettingsViewModel: ObservableObject {
     private let tabManager: FolderTabManager
     private let shortcutRegistrar: ShortcutRegistering
     private let folderChooser: FolderChoosing
+    private let userDefaults: PreferencesStoring
     private let onReloadCurrentTab: @MainActor () -> Void
     private let onToggleWindow: @MainActor () -> Void
+    private let onScaleImagesWithWindowChange: @MainActor (Bool) -> Void
 
     init(
         shortcut: KeyboardShortcut,
         language: AppLanguage,
+        scaleImagesWithWindow: Bool,
         tabs: [FolderTab],
         selectedTabID: FolderTab.ID?,
         localization: LocalizationManager,
         tabManager: FolderTabManager,
         shortcutRegistrar: ShortcutRegistering = HotKeyManager.shared,
         folderChooser: FolderChoosing,
+        userDefaults: PreferencesStoring = AppEnvironment.preferences,
         onReloadCurrentTab: @escaping @MainActor () -> Void,
-        onToggleWindow: @escaping @MainActor () -> Void
+        onToggleWindow: @escaping @MainActor () -> Void,
+        onScaleImagesWithWindowChange: @escaping @MainActor (Bool) -> Void
     ) {
         self.shortcut = shortcut
         self.language = language
+        self.scaleImagesWithWindow = scaleImagesWithWindow
         self.tabs = tabs
         self.selectedTabID = selectedTabID
         self.localization = localization
         self.tabManager = tabManager
         self.shortcutRegistrar = shortcutRegistrar
         self.folderChooser = folderChooser
+        self.userDefaults = userDefaults
         self.onReloadCurrentTab = onReloadCurrentTab
         self.onToggleWindow = onToggleWindow
+        self.onScaleImagesWithWindowChange = onScaleImagesWithWindowChange
     }
 
     func selectTab(id: FolderTab.ID) {
@@ -141,6 +150,8 @@ final class SettingsViewModel: ObservableObject {
         shortcut.save()
         localization.language = language
         tabManager.replaceTabs(tabs, selectedTabID: selectedTabID)
+        AppSettings.saveScaleImagesWithWindow(scaleImagesWithWindow, to: userDefaults)
+        onScaleImagesWithWindowChange(scaleImagesWithWindow)
         errorMessage = nil
         return true
     }

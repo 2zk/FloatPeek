@@ -10,6 +10,7 @@ struct ContentView: View {
     @EnvironmentObject private var tabManager: FolderTabManager
     @EnvironmentObject private var appCoordinator: AppCoordinator
     @State private var gridColumnCount = 1
+    @State private var scaleImagesWithWindow = AppSettings.loadScaleImagesWithWindow()
 
     var body: some View {
         VStack(spacing: 0) {
@@ -34,7 +35,9 @@ struct ContentView: View {
                             selectedImageIDs: viewModel.selectedImageIDs,
                             selectedImages: viewModel.selectedImages,
                             selectedImageID: viewModel.selectedImage?.id,
-                            columnCount: gridColumnCount,
+                            columnCount: displayedGridColumnCount,
+                            scaleImagesWithWindow: scaleImagesWithWindow,
+                            availableWidth: geometry.size.width,
                             onSelect: { image, mode in
                                 viewModel.selectImage(image, mode: mode)
                             },
@@ -182,25 +185,25 @@ struct ContentView: View {
         case .leftArrow(let extendingSelection):
             return viewModel.moveSelection(
                 .left,
-                columnCount: gridColumnCount,
+                columnCount: displayedGridColumnCount,
                 extendingSelection: extendingSelection
             )
         case .rightArrow(let extendingSelection):
             return viewModel.moveSelection(
                 .right,
-                columnCount: gridColumnCount,
+                columnCount: displayedGridColumnCount,
                 extendingSelection: extendingSelection
             )
         case .upArrow(let extendingSelection):
             return viewModel.moveSelection(
                 .up,
-                columnCount: gridColumnCount,
+                columnCount: displayedGridColumnCount,
                 extendingSelection: extendingSelection
             )
         case .downArrow(let extendingSelection):
             return viewModel.moveSelection(
                 .down,
-                columnCount: gridColumnCount,
+                columnCount: displayedGridColumnCount,
                 extendingSelection: extendingSelection
             )
         case .copy:
@@ -237,17 +240,25 @@ struct ContentView: View {
         gridColumnCount = max(Int((contentWidth + Self.gridColumnSpacing) / columnWidthWithSpacing), 1)
     }
 
+    private var displayedGridColumnCount: Int {
+        scaleImagesWithWindow ? 1 : gridColumnCount
+    }
+
     private func makeSettingsViewModel() -> SettingsViewModel {
         SettingsViewModel(
             shortcut: HotKeyManager.shared.currentShortcut(),
             language: localization.language,
+            scaleImagesWithWindow: scaleImagesWithWindow,
             tabs: tabManager.tabs,
             selectedTabID: tabManager.selectedTabID,
             localization: localization,
             tabManager: tabManager,
             folderChooser: FolderManager(),
             onReloadCurrentTab: viewModel.reload,
-            onToggleWindow: WindowManager.shared.toggleWindow
+            onToggleWindow: WindowManager.shared.toggleWindow,
+            onScaleImagesWithWindowChange: { isEnabled in
+                scaleImagesWithWindow = isEnabled
+            }
         )
     }
 
