@@ -24,6 +24,7 @@ final class SettingsViewModel: ObservableObject {
     @Published var language: AppLanguage
     @Published var scaleImagesWithWindow: Bool
     @Published var displayedFileExtensions: Set<String>
+    @Published var quickLookBackgroundColor: QuickLookBackgroundColor
     @Published var tabs: [FolderTab]
     @Published var selectedTabID: FolderTab.ID?
     @Published private(set) var errorMessage: String?
@@ -41,12 +42,14 @@ final class SettingsViewModel: ObservableObject {
     private let onToggleWindow: @MainActor () -> Void
     private let onScaleImagesWithWindowChange: @MainActor (Bool) -> Void
     private let onDisplayedFileExtensionsChange: @MainActor (Set<String>) -> Void
+    private let onQuickLookBackgroundColorChange: @MainActor (QuickLookBackgroundColor) -> Void
 
     init(
         shortcut: KeyboardShortcut,
         language: AppLanguage,
         scaleImagesWithWindow: Bool,
         displayedFileExtensions: Set<String>,
+        quickLookBackgroundColor: QuickLookBackgroundColor,
         tabs: [FolderTab],
         selectedTabID: FolderTab.ID?,
         localization: LocalizationManager,
@@ -57,12 +60,14 @@ final class SettingsViewModel: ObservableObject {
         onReloadCurrentTab: @escaping @MainActor () -> Void,
         onToggleWindow: @escaping @MainActor () -> Void,
         onScaleImagesWithWindowChange: @escaping @MainActor (Bool) -> Void,
-        onDisplayedFileExtensionsChange: @escaping @MainActor (Set<String>) -> Void
+        onDisplayedFileExtensionsChange: @escaping @MainActor (Set<String>) -> Void,
+        onQuickLookBackgroundColorChange: @escaping @MainActor (QuickLookBackgroundColor) -> Void
     ) {
         self.shortcut = shortcut
         self.language = language
         self.scaleImagesWithWindow = scaleImagesWithWindow
         self.displayedFileExtensions = displayedFileExtensions
+        self.quickLookBackgroundColor = quickLookBackgroundColor
         self.tabs = tabs
         self.selectedTabID = selectedTabID
         self.localization = localization
@@ -74,6 +79,7 @@ final class SettingsViewModel: ObservableObject {
         self.onToggleWindow = onToggleWindow
         self.onScaleImagesWithWindowChange = onScaleImagesWithWindowChange
         self.onDisplayedFileExtensionsChange = onDisplayedFileExtensionsChange
+        self.onQuickLookBackgroundColorChange = onQuickLookBackgroundColorChange
     }
 
     func selectTab(id: FolderTab.ID) {
@@ -158,8 +164,11 @@ final class SettingsViewModel: ObservableObject {
         tabManager.replaceTabs(tabs, selectedTabID: selectedTabID)
         AppSettings.saveScaleImagesWithWindow(scaleImagesWithWindow, to: userDefaults)
         AppSettings.saveDisplayedFileExtensions(displayedFileExtensions, to: userDefaults)
+        quickLookBackgroundColor = quickLookBackgroundColor.normalized()
+        AppSettings.saveQuickLookBackgroundColor(quickLookBackgroundColor, to: userDefaults)
         onScaleImagesWithWindowChange(scaleImagesWithWindow)
         onDisplayedFileExtensionsChange(displayedFileExtensions)
+        onQuickLookBackgroundColorChange(quickLookBackgroundColor)
         errorMessage = nil
         return true
     }

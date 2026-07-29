@@ -7,7 +7,18 @@ final class QuickLookManager: NSObject,
     QLPreviewPanelDelegate {
     static let shared = QuickLookManager()
 
-    private var previewURL: URL?
+    private final class PreviewItem: NSObject, QLPreviewItem {
+        let previewItemURL: URL?
+        let previewItemTitle: String?
+
+        init(fileURL: URL, title: String) {
+            previewItemURL = fileURL
+            previewItemTitle = title
+        }
+    }
+
+    private var previewItem: PreviewItem?
+    private var backgroundColor = AppSettings.loadQuickLookBackgroundColor()
 
     private override init() {}
 
@@ -22,7 +33,7 @@ final class QuickLookManager: NSObject,
 
     @discardableResult
     func preview(fileURL: URL) -> Bool {
-        previewURL = fileURL
+        previewItem = makePreviewItem(fileURL: fileURL)
 
         guard let panel = QLPreviewPanel.shared() else {
             return false
@@ -31,6 +42,7 @@ final class QuickLookManager: NSObject,
         panel.dataSource = self
         panel.delegate = self
         panel.reloadData()
+        configureAppearance(of: panel)
         panel.makeKeyAndOrderFront(nil)
         return true
     }
@@ -51,12 +63,13 @@ final class QuickLookManager: NSObject,
             return
         }
 
-        previewURL = fileURL
+        previewItem = makePreviewItem(fileURL: fileURL)
         panel.reloadData()
+        configureAppearance(of: panel)
     }
 
     func closePreviewIfVisible() {
-        previewURL = nil
+        previewItem = nil
 
         guard isPreviewing,
               let panel = QLPreviewPanel.shared() else {
@@ -67,11 +80,44 @@ final class QuickLookManager: NSObject,
         panel.orderOut(nil)
     }
 
+    func applyBackgroundColor(_ color: QuickLookBackgroundColor) {
+        backgroundColor = color.normalized()
+
+        guard isPreviewing,
+              let panel = QLPreviewPanel.shared() else {
+            return
+        }
+
+        panel.backgroundColor = makeBackgroundColor()
+    }
+
     func numberOfPreviewItems(in panel: QLPreviewPanel!) -> Int {
-        previewURL == nil ? 0 : 1
+        previewItem == nil ? 0 : 1
     }
 
     func previewPanel(_ panel: QLPreviewPanel!, previewItemAt index: Int) -> QLPreviewItem! {
-        previewURL as NSURL?
+        previewItem
+    }
+
+    private func configureAppearance(of panel: QLPreviewPanel) {
+        panel.titleVisibility = .visible
+        panel.titlebarAppearsTransparent = true
+        panel.backgroundColor = makeBackgroundColor()
+    }
+
+    private func makeBackgroundColor() -> NSColor {
+        NSColor(
+            srgbRed: backgroundColor.red,
+            green: backgroundColor.green,
+            blue: backgroundColor.blue,
+            alpha: 1
+        )
+    }
+
+    private func makePreviewItem(fileURL: URL) -> PreviewItem {
+        PreviewItem(
+            fileURL: fileURL,
+            title: "\(localized("FloatPeek Quick Look")) — \(fileURL.lastPathComponent)"
+        )
     }
 }

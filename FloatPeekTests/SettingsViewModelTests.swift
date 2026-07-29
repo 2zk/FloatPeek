@@ -26,6 +26,52 @@ final class SettingsViewModelTests: XCTestCase {
         XCTAssertEqual(AppSettings.loadDisplayedFileExtensions(from: preferences), [])
     }
 
+    func testQuickLookBackgroundColorDefaultsAndPersists() {
+        let preferences = InMemoryPreferences()
+        let color = QuickLookBackgroundColor(
+            red: 0.1,
+            green: 0.2,
+            blue: 0.3
+        )
+
+        XCTAssertEqual(
+            AppSettings.loadQuickLookBackgroundColor(from: preferences),
+            .defaultColor
+        )
+
+        AppSettings.saveQuickLookBackgroundColor(color, to: preferences)
+
+        XCTAssertEqual(
+            AppSettings.loadQuickLookBackgroundColor(from: preferences),
+            color
+        )
+    }
+
+    func testQuickLookBackgroundColorFallsBackForInvalidColor() {
+        let preferences = InMemoryPreferences()
+        preferences.set(
+            [1.1, 0.2, 0.3],
+            forKey: AppSettings.quickLookBackgroundColorComponentsKey
+        )
+
+        let color = AppSettings.loadQuickLookBackgroundColor(from: preferences)
+
+        XCTAssertEqual(
+            color.colorComponents,
+            QuickLookBackgroundColor.defaultColor.colorComponents
+        )
+    }
+
+    func testQuickLookBackgroundColorMigratesLegacyBorderColor() {
+        let preferences = InMemoryPreferences()
+        preferences.set([0.1, 0.2, 0.3], forKey: "quickLookBorderColorComponents")
+
+        XCTAssertEqual(
+            AppSettings.loadQuickLookBackgroundColor(from: preferences),
+            QuickLookBackgroundColor(red: 0.1, green: 0.2, blue: 0.3)
+        )
+    }
+
     func testAddingAndRemovingTabsKeepsSelectionValid() {
         let context = makeContext()
 
@@ -78,6 +124,11 @@ final class SettingsViewModelTests: XCTestCase {
         context.viewModel.language = .japanese
         context.viewModel.scaleImagesWithWindow = false
         context.viewModel.displayedFileExtensions = ["png", "pdf"]
+        context.viewModel.quickLookBackgroundColor = QuickLookBackgroundColor(
+            red: 0.1,
+            green: 0.2,
+            blue: 0.3
+        )
         context.viewModel.addTab()
 
         XCTAssertTrue(context.viewModel.save())
@@ -91,8 +142,16 @@ final class SettingsViewModelTests: XCTestCase {
             AppSettings.loadDisplayedFileExtensions(from: context.preferences),
             ["png", "pdf"]
         )
+        XCTAssertEqual(
+            AppSettings.loadQuickLookBackgroundColor(from: context.preferences),
+            context.viewModel.quickLookBackgroundColor
+        )
         XCTAssertEqual(context.imageScalingRecorder.values, [false])
         XCTAssertEqual(context.fileExtensionsRecorder.values, [["png", "pdf"]])
+        XCTAssertEqual(
+            context.quickLookBackgroundColorRecorder.values,
+            [context.viewModel.quickLookBackgroundColor]
+        )
     }
 
     func testImageScalingDraftIsNotAppliedBeforeSave() {
@@ -100,14 +159,24 @@ final class SettingsViewModelTests: XCTestCase {
 
         context.viewModel.scaleImagesWithWindow = false
         context.viewModel.displayedFileExtensions = ["png"]
+        context.viewModel.quickLookBackgroundColor = QuickLookBackgroundColor(
+            red: 0.1,
+            green: 0.2,
+            blue: 0.3
+        )
 
         XCTAssertTrue(AppSettings.loadScaleImagesWithWindow(from: context.preferences))
         XCTAssertEqual(
             AppSettings.loadDisplayedFileExtensions(from: context.preferences),
             AppSettings.allSupportedFileExtensions
         )
+        XCTAssertEqual(
+            AppSettings.loadQuickLookBackgroundColor(from: context.preferences),
+            .defaultColor
+        )
         XCTAssertTrue(context.imageScalingRecorder.values.isEmpty)
         XCTAssertTrue(context.fileExtensionsRecorder.values.isEmpty)
+        XCTAssertTrue(context.quickLookBackgroundColorRecorder.values.isEmpty)
     }
 
     func testRegistrationFailureDoesNotApplyDraft() {
@@ -116,6 +185,11 @@ final class SettingsViewModelTests: XCTestCase {
         context.viewModel.language = .japanese
         context.viewModel.scaleImagesWithWindow = false
         context.viewModel.displayedFileExtensions = ["png"]
+        context.viewModel.quickLookBackgroundColor = QuickLookBackgroundColor(
+            red: 0.1,
+            green: 0.2,
+            blue: 0.3
+        )
         context.viewModel.addTab()
 
         XCTAssertFalse(context.viewModel.save())
@@ -127,8 +201,13 @@ final class SettingsViewModelTests: XCTestCase {
             AppSettings.loadDisplayedFileExtensions(from: context.preferences),
             AppSettings.allSupportedFileExtensions
         )
+        XCTAssertEqual(
+            AppSettings.loadQuickLookBackgroundColor(from: context.preferences),
+            .defaultColor
+        )
         XCTAssertTrue(context.imageScalingRecorder.values.isEmpty)
         XCTAssertTrue(context.fileExtensionsRecorder.values.isEmpty)
+        XCTAssertTrue(context.quickLookBackgroundColorRecorder.values.isEmpty)
         XCTAssertNotNil(context.viewModel.errorMessage)
     }
 
@@ -141,6 +220,7 @@ final class SettingsViewModelTests: XCTestCase {
         let preferences = InMemoryPreferences()
         let imageScalingRecorder = TestImageScalingRecorder()
         let fileExtensionsRecorder = TestFileExtensionsRecorder()
+        let quickLookBackgroundColorRecorder = TestQuickLookBackgroundColorRecorder()
         preferences.set(AppLanguage.english.rawValue, forKey: AppSettings.languageKey)
         let localization = LocalizationManager(userDefaults: preferences)
         let tabManager = FolderTabManager(userDefaults: preferences)
@@ -151,6 +231,9 @@ final class SettingsViewModelTests: XCTestCase {
             language: localization.language,
             scaleImagesWithWindow: AppSettings.loadScaleImagesWithWindow(from: preferences),
             displayedFileExtensions: AppSettings.loadDisplayedFileExtensions(from: preferences),
+            quickLookBackgroundColor: AppSettings.loadQuickLookBackgroundColor(
+                from: preferences
+            ),
             tabs: initialTabs,
             selectedTabID: initialTabs[0].id,
             localization: localization,
@@ -161,7 +244,8 @@ final class SettingsViewModelTests: XCTestCase {
             onReloadCurrentTab: {},
             onToggleWindow: {},
             onScaleImagesWithWindowChange: imageScalingRecorder.record,
-            onDisplayedFileExtensionsChange: fileExtensionsRecorder.record
+            onDisplayedFileExtensionsChange: fileExtensionsRecorder.record,
+            onQuickLookBackgroundColorChange: quickLookBackgroundColorRecorder.record
         )
         return TestContext(
             viewModel: viewModel,
@@ -171,7 +255,8 @@ final class SettingsViewModelTests: XCTestCase {
             shortcutRegistrar: shortcutRegistrar,
             preferences: preferences,
             imageScalingRecorder: imageScalingRecorder,
-            fileExtensionsRecorder: fileExtensionsRecorder
+            fileExtensionsRecorder: fileExtensionsRecorder,
+            quickLookBackgroundColorRecorder: quickLookBackgroundColorRecorder
         )
     }
 }
@@ -186,6 +271,7 @@ private struct TestContext {
     let preferences: InMemoryPreferences
     let imageScalingRecorder: TestImageScalingRecorder
     let fileExtensionsRecorder: TestFileExtensionsRecorder
+    let quickLookBackgroundColorRecorder: TestQuickLookBackgroundColorRecorder
 }
 
 @MainActor
@@ -203,6 +289,15 @@ private final class TestFileExtensionsRecorder {
 
     func record(_ fileExtensions: Set<String>) {
         values.append(fileExtensions)
+    }
+}
+
+@MainActor
+private final class TestQuickLookBackgroundColorRecorder {
+    private(set) var values: [QuickLookBackgroundColor] = []
+
+    func record(_ color: QuickLookBackgroundColor) {
+        values.append(color)
     }
 }
 

@@ -22,6 +22,8 @@
 "Display" = "Display";
 "Scale images with window width" = "Scale images with window width";
 "Displayed File Extensions" = "Displayed File Extensions";
+"Quick Look Background" = "Quick Look Background";
+"Background Color" = "Background Color";
 "Language" = "Language";
 "System Default" = "System Default";
 "English" = "English";
@@ -36,6 +38,7 @@
 "Click and type shortcut" = "Click and type shortcut";
 "Open" = "Open";
 "Quick Look" = "Quick Look";
+"FloatPeek Quick Look" = "FloatPeek Quick Look";
 "Copy" = "Copy";
 "Copy File Path" = "Copy File Path";
 "Reveal in Finder" = "Reveal in Finder";

@@ -250,6 +250,7 @@ struct ContentView: View {
             language: localization.language,
             scaleImagesWithWindow: scaleImagesWithWindow,
             displayedFileExtensions: AppSettings.loadDisplayedFileExtensions(),
+            quickLookBackgroundColor: AppSettings.loadQuickLookBackgroundColor(),
             tabs: tabManager.tabs,
             selectedTabID: tabManager.selectedTabID,
             localization: localization,
@@ -262,6 +263,9 @@ struct ContentView: View {
             },
             onDisplayedFileExtensionsChange: { displayedFileExtensions in
                 viewModel.setDisplayedFileExtensions(displayedFileExtensions)
+            },
+            onQuickLookBackgroundColorChange: { backgroundColor in
+                QuickLookManager.shared.applyBackgroundColor(backgroundColor)
             }
         )
     }

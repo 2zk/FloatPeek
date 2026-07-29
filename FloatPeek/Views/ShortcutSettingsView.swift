@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -109,6 +110,15 @@ struct SettingsView: View {
                     .toggleStyle(.checkbox)
                 }
             }
+
+            Text(localization.localized("Quick Look Background"))
+                .font(.subheadline)
+
+            ColorPicker(
+                localization.localized("Background Color"),
+                selection: quickLookBackgroundColorBinding,
+                supportsOpacity: false
+            )
         }
     }
 
@@ -241,6 +251,29 @@ struct SettingsView: View {
                 } else {
                     viewModel.displayedFileExtensions.remove(fileExtension)
                 }
+            }
+        )
+    }
+
+    private var quickLookBackgroundColorBinding: Binding<Color> {
+        Binding(
+            get: {
+                Color(
+                    .sRGB,
+                    red: viewModel.quickLookBackgroundColor.red,
+                    green: viewModel.quickLookBackgroundColor.green,
+                    blue: viewModel.quickLookBackgroundColor.blue,
+                    opacity: 1
+                )
+            },
+            set: { color in
+                guard let color = NSColor(color).usingColorSpace(.sRGB) else {
+                    return
+                }
+
+                viewModel.quickLookBackgroundColor.red = color.redComponent
+                viewModel.quickLookBackgroundColor.green = color.greenComponent
+                viewModel.quickLookBackgroundColor.blue = color.blueComponent
             }
         )
     }

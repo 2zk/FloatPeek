@@ -22,6 +22,8 @@
 "Display" = "表示";
 "Scale images with window width" = "ウィンドウ幅に合わせて画像を拡大";
 "Displayed File Extensions" = "表示するファイル拡張子";
+"Quick Look Background" = "クイックルックの背景";
+"Background Color" = "背景色";
 "Language" = "言語";
 "System Default" = "システム設定";
 "English" = "英語";
@@ -36,6 +38,7 @@
 "Click and type shortcut" = "クリックしてショートカットを入力";
 "Open" = "開く";
 "Quick Look" = "クイックルック";
+"FloatPeek Quick Look" = "FloatPeek クイックルック";
 "Copy" = "コピー";
 "Copy File Path" = "ファイルパスをコピー";
 "Reveal in Finder" = "Finderに表示";
