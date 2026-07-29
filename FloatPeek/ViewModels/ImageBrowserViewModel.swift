@@ -22,7 +22,7 @@ final class ImageBrowserViewModel: ObservableObject {
     @Published private(set) var fileActionErrorMessage: String?
     @Published private var selection = ImageSelection()
 
-    private let imageFileLoader: ImageFileLoader
+    private var imageFileLoader: ImageFileLoader
     private let fileOpener: FileOpening
     private let fileActionManager: FileActionHandling
     private let folderMonitor: FolderMonitoring
@@ -89,6 +89,19 @@ final class ImageBrowserViewModel: ObservableObject {
     func startMonitoring() {
         shouldMonitorFolder = true
         restartMonitoring()
+    }
+
+    func setDisplayedFileExtensions(_ displayedFileExtensions: Set<String>) {
+        guard imageFileLoader.displayedFileExtensions != displayedFileExtensions else {
+            return
+        }
+
+        imageFileLoader.displayedFileExtensions = displayedFileExtensions
+        reload()
+
+        if shouldMonitorFolder {
+            restartMonitoring()
+        }
     }
 
     func stopMonitoring() {
@@ -330,6 +343,7 @@ final class ImageBrowserViewModel: ObservableObject {
         let folderMonitor = folderMonitor
         let folderURL = folderURL
         let shouldMonitorFolder = shouldMonitorFolder
+        let displayedFileExtensions = imageFileLoader.displayedFileExtensions
 
         monitoringTask = Task { [weak self] in
             await folderMonitor.stopMonitoring()
@@ -340,7 +354,10 @@ final class ImageBrowserViewModel: ObservableObject {
                 return
             }
 
-            await folderMonitor.startMonitoring(folderURL: folderURL) { [weak self] in
+            await folderMonitor.startMonitoring(
+                folderURL: folderURL,
+                displayedFileExtensions: displayedFileExtensions
+            ) { [weak self] in
                 Task { @MainActor [weak self] in
                     self?.reload()
                 }

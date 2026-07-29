@@ -23,6 +23,7 @@ final class SettingsViewModel: ObservableObject {
     @Published var shortcut: KeyboardShortcut
     @Published var language: AppLanguage
     @Published var scaleImagesWithWindow: Bool
+    @Published var displayedFileExtensions: Set<String>
     @Published var tabs: [FolderTab]
     @Published var selectedTabID: FolderTab.ID?
     @Published private(set) var errorMessage: String?
@@ -39,11 +40,13 @@ final class SettingsViewModel: ObservableObject {
     private let onReloadCurrentTab: @MainActor () -> Void
     private let onToggleWindow: @MainActor () -> Void
     private let onScaleImagesWithWindowChange: @MainActor (Bool) -> Void
+    private let onDisplayedFileExtensionsChange: @MainActor (Set<String>) -> Void
 
     init(
         shortcut: KeyboardShortcut,
         language: AppLanguage,
         scaleImagesWithWindow: Bool,
+        displayedFileExtensions: Set<String>,
         tabs: [FolderTab],
         selectedTabID: FolderTab.ID?,
         localization: LocalizationManager,
@@ -53,11 +56,13 @@ final class SettingsViewModel: ObservableObject {
         userDefaults: PreferencesStoring = AppEnvironment.preferences,
         onReloadCurrentTab: @escaping @MainActor () -> Void,
         onToggleWindow: @escaping @MainActor () -> Void,
-        onScaleImagesWithWindowChange: @escaping @MainActor (Bool) -> Void
+        onScaleImagesWithWindowChange: @escaping @MainActor (Bool) -> Void,
+        onDisplayedFileExtensionsChange: @escaping @MainActor (Set<String>) -> Void
     ) {
         self.shortcut = shortcut
         self.language = language
         self.scaleImagesWithWindow = scaleImagesWithWindow
+        self.displayedFileExtensions = displayedFileExtensions
         self.tabs = tabs
         self.selectedTabID = selectedTabID
         self.localization = localization
@@ -68,6 +73,7 @@ final class SettingsViewModel: ObservableObject {
         self.onReloadCurrentTab = onReloadCurrentTab
         self.onToggleWindow = onToggleWindow
         self.onScaleImagesWithWindowChange = onScaleImagesWithWindowChange
+        self.onDisplayedFileExtensionsChange = onDisplayedFileExtensionsChange
     }
 
     func selectTab(id: FolderTab.ID) {
@@ -151,7 +157,9 @@ final class SettingsViewModel: ObservableObject {
         localization.language = language
         tabManager.replaceTabs(tabs, selectedTabID: selectedTabID)
         AppSettings.saveScaleImagesWithWindow(scaleImagesWithWindow, to: userDefaults)
+        AppSettings.saveDisplayedFileExtensions(displayedFileExtensions, to: userDefaults)
         onScaleImagesWithWindowChange(scaleImagesWithWindow)
+        onDisplayedFileExtensionsChange(displayedFileExtensions)
         errorMessage = nil
         return true
     }

@@ -31,6 +31,17 @@ final class ImageFileLoaderTests: XCTestCase {
         XCTAssertEqual(images.map(\.fileName), ["c.PDF", "b.png", "a.JPG"])
     }
 
+    func testLoadImagesFiltersDeselectedExtensions() throws {
+        try createFile(named: "a.jpg", modifiedAt: Date(timeIntervalSince1970: 10))
+        try createFile(named: "b.png", modifiedAt: Date(timeIntervalSince1970: 20))
+
+        let images = try ImageFileLoader(
+            displayedFileExtensions: ["png"]
+        ).loadImages(in: temporaryDirectory)
+
+        XCTAssertEqual(images.map(\.fileName), ["b.png"])
+    }
+
     func testLoadImagesSortsByModifiedDateDescendingThenNameAscending() throws {
         let newerDate = Date(timeIntervalSince1970: 20)
         let olderDate = Date(timeIntervalSince1970: 10)

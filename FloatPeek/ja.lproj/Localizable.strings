@@ -21,6 +21,7 @@
 "File Name" = "ファイル名";
 "Display" = "表示";
 "Scale images with window width" = "ウィンドウ幅に合わせて画像を拡大";
+"Displayed File Extensions" = "表示するファイル拡張子";
 "Language" = "言語";
 "System Default" = "システム設定";
 "English" = "英語";

@@ -11,6 +11,17 @@ struct AppSettings {
     static let folderTabsKey = "folderTabs"
     static let selectedFolderTabIDKey = "selectedFolderTabID"
     static let scaleImagesWithWindowKey = "scaleImagesWithWindow"
+    static let displayedFileExtensionsKey = "displayedFileExtensions"
+
+    static let supportedFileExtensions = [
+        "jpg",
+        "jpeg",
+        "png",
+        "gif",
+        "heic",
+        "pdf"
+    ]
+    static let allSupportedFileExtensions = Set(supportedFileExtensions)
 
     static let defaultShortcut = KeyboardShortcut(
         keyCode: UInt32(kVK_ANSI_1),
@@ -28,6 +39,26 @@ struct AppSettings {
         to userDefaults: PreferencesStoring = AppEnvironment.preferences
     ) {
         userDefaults.set(isEnabled, forKey: scaleImagesWithWindowKey)
+    }
+
+    static func loadDisplayedFileExtensions(
+        from userDefaults: PreferencesStoring = AppEnvironment.preferences
+    ) -> Set<String> {
+        guard let storedExtensions = userDefaults.object(
+            forKey: displayedFileExtensionsKey
+        ) as? [String] else {
+            return allSupportedFileExtensions
+        }
+
+        return Set(storedExtensions).intersection(allSupportedFileExtensions)
+    }
+
+    static func saveDisplayedFileExtensions(
+        _ extensions: Set<String>,
+        to userDefaults: PreferencesStoring = AppEnvironment.preferences
+    ) {
+        let storedExtensions = supportedFileExtensions.filter(extensions.contains)
+        userDefaults.set(storedExtensions, forKey: displayedFileExtensionsKey)
     }
 }
 

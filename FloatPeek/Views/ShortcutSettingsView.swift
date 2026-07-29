@@ -96,6 +96,19 @@ struct SettingsView: View {
                 localization.localized("Scale images with window width"),
                 isOn: $viewModel.scaleImagesWithWindow
             )
+
+            Text(localization.localized("Displayed File Extensions"))
+                .font(.subheadline)
+
+            HStack(spacing: 16) {
+                ForEach(AppSettings.supportedFileExtensions, id: \.self) { fileExtension in
+                    Toggle(
+                        ".\(fileExtension)",
+                        isOn: displayedFileExtensionBinding(fileExtension)
+                    )
+                    .toggleStyle(.checkbox)
+                }
+            }
         }
     }
 
@@ -215,6 +228,21 @@ struct SettingsView: View {
             RoundedRectangle(cornerRadius: 8)
                 .fill(isSelected ? Color.accentColor.opacity(0.12) : Color.secondary.opacity(0.08))
         }
+    }
+
+    private func displayedFileExtensionBinding(_ fileExtension: String) -> Binding<Bool> {
+        Binding(
+            get: {
+                viewModel.displayedFileExtensions.contains(fileExtension)
+            },
+            set: { isDisplayed in
+                if isDisplayed {
+                    viewModel.displayedFileExtensions.insert(fileExtension)
+                } else {
+                    viewModel.displayedFileExtensions.remove(fileExtension)
+                }
+            }
+        )
     }
 
 }

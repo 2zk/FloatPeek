@@ -13,6 +13,19 @@ final class SettingsViewModelTests: XCTestCase {
         XCTAssertFalse(AppSettings.loadScaleImagesWithWindow(from: preferences))
     }
 
+    func testDisplayedFileExtensionsDefaultToAllAndPersistEmptySelection() {
+        let preferences = InMemoryPreferences()
+
+        XCTAssertEqual(
+            AppSettings.loadDisplayedFileExtensions(from: preferences),
+            AppSettings.allSupportedFileExtensions
+        )
+
+        AppSettings.saveDisplayedFileExtensions([], to: preferences)
+
+        XCTAssertEqual(AppSettings.loadDisplayedFileExtensions(from: preferences), [])
+    }
+
     func testAddingAndRemovingTabsKeepsSelectionValid() {
         let context = makeContext()
 
@@ -64,6 +77,7 @@ final class SettingsViewModelTests: XCTestCase {
         let context = makeContext()
         context.viewModel.language = .japanese
         context.viewModel.scaleImagesWithWindow = false
+        context.viewModel.displayedFileExtensions = ["png", "pdf"]
         context.viewModel.addTab()
 
         XCTAssertTrue(context.viewModel.save())
@@ -73,16 +87,27 @@ final class SettingsViewModelTests: XCTestCase {
         XCTAssertEqual(context.tabManager.selectedTabID, context.viewModel.selectedTabID)
         XCTAssertEqual(context.shortcutRegistrar.registeredShortcut, context.viewModel.shortcut)
         XCTAssertFalse(AppSettings.loadScaleImagesWithWindow(from: context.preferences))
+        XCTAssertEqual(
+            AppSettings.loadDisplayedFileExtensions(from: context.preferences),
+            ["png", "pdf"]
+        )
         XCTAssertEqual(context.imageScalingRecorder.values, [false])
+        XCTAssertEqual(context.fileExtensionsRecorder.values, [["png", "pdf"]])
     }
 
     func testImageScalingDraftIsNotAppliedBeforeSave() {
         let context = makeContext()
 
         context.viewModel.scaleImagesWithWindow = false
+        context.viewModel.displayedFileExtensions = ["png"]
 
         XCTAssertTrue(AppSettings.loadScaleImagesWithWindow(from: context.preferences))
+        XCTAssertEqual(
+            AppSettings.loadDisplayedFileExtensions(from: context.preferences),
+            AppSettings.allSupportedFileExtensions
+        )
         XCTAssertTrue(context.imageScalingRecorder.values.isEmpty)
+        XCTAssertTrue(context.fileExtensionsRecorder.values.isEmpty)
     }
 
     func testRegistrationFailureDoesNotApplyDraft() {
@@ -90,6 +115,7 @@ final class SettingsViewModelTests: XCTestCase {
         let context = makeContext(shortcutRegistrar: shortcutRegistrar)
         context.viewModel.language = .japanese
         context.viewModel.scaleImagesWithWindow = false
+        context.viewModel.displayedFileExtensions = ["png"]
         context.viewModel.addTab()
 
         XCTAssertFalse(context.viewModel.save())
@@ -97,7 +123,12 @@ final class SettingsViewModelTests: XCTestCase {
         XCTAssertEqual(context.localization.language, .english)
         XCTAssertEqual(context.tabManager.tabs, context.initialTabs)
         XCTAssertTrue(AppSettings.loadScaleImagesWithWindow(from: context.preferences))
+        XCTAssertEqual(
+            AppSettings.loadDisplayedFileExtensions(from: context.preferences),
+            AppSettings.allSupportedFileExtensions
+        )
         XCTAssertTrue(context.imageScalingRecorder.values.isEmpty)
+        XCTAssertTrue(context.fileExtensionsRecorder.values.isEmpty)
         XCTAssertNotNil(context.viewModel.errorMessage)
     }
 
@@ -109,6 +140,7 @@ final class SettingsViewModelTests: XCTestCase {
         let folderChooser = folderChooser ?? TestFolderChooser()
         let preferences = InMemoryPreferences()
         let imageScalingRecorder = TestImageScalingRecorder()
+        let fileExtensionsRecorder = TestFileExtensionsRecorder()
         preferences.set(AppLanguage.english.rawValue, forKey: AppSettings.languageKey)
         let localization = LocalizationManager(userDefaults: preferences)
         let tabManager = FolderTabManager(userDefaults: preferences)
@@ -118,6 +150,7 @@ final class SettingsViewModelTests: XCTestCase {
             shortcut: AppSettings.defaultShortcut,
             language: localization.language,
             scaleImagesWithWindow: AppSettings.loadScaleImagesWithWindow(from: preferences),
+            displayedFileExtensions: AppSettings.loadDisplayedFileExtensions(from: preferences),
             tabs: initialTabs,
             selectedTabID: initialTabs[0].id,
             localization: localization,
@@ -127,7 +160,8 @@ final class SettingsViewModelTests: XCTestCase {
             userDefaults: preferences,
             onReloadCurrentTab: {},
             onToggleWindow: {},
-            onScaleImagesWithWindowChange: imageScalingRecorder.record
+            onScaleImagesWithWindowChange: imageScalingRecorder.record,
+            onDisplayedFileExtensionsChange: fileExtensionsRecorder.record
         )
         return TestContext(
             viewModel: viewModel,
@@ -136,7 +170,8 @@ final class SettingsViewModelTests: XCTestCase {
             initialTabs: initialTabs,
             shortcutRegistrar: shortcutRegistrar,
             preferences: preferences,
-            imageScalingRecorder: imageScalingRecorder
+            imageScalingRecorder: imageScalingRecorder,
+            fileExtensionsRecorder: fileExtensionsRecorder
         )
     }
 }
@@ -150,6 +185,7 @@ private struct TestContext {
     let shortcutRegistrar: TestShortcutRegistrar
     let preferences: InMemoryPreferences
     let imageScalingRecorder: TestImageScalingRecorder
+    let fileExtensionsRecorder: TestFileExtensionsRecorder
 }
 
 @MainActor
@@ -158,6 +194,15 @@ private final class TestImageScalingRecorder {
 
     func record(_ isEnabled: Bool) {
         values.append(isEnabled)
+    }
+}
+
+@MainActor
+private final class TestFileExtensionsRecorder {
+    private(set) var values: [Set<String>] = []
+
+    func record(_ fileExtensions: Set<String>) {
+        values.append(fileExtensions)
     }
 }
 

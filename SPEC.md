@@ -1,28 +1,731 @@
-macOSアプリ仕様書：FloatPeek
+# FloatPeek 開発仕様書
 
-# 1. 概要
+本書は FloatPeek の実装、保守、テスト、配布に関する開発者向け仕様をまとめた基準文書である。利用者向けの導入方法と操作方法は [README.md](README.md) を参照する。
 
-FloatPeek は、登録した複数の画像フォルダをグローバルショートカットで素早く表示する macOS アプリである。
+# 1. プロダクト定義
 
-通常の Finder 代替ではなく、よく使う画像フォルダを小さなフローティングウィンドウとして前面表示し、画像の確認・プレビュー・既定アプリでのオープン・外部アプリへのドラッグ＆ドロップを素早く行うための個人利用ユーティリティとして実装する。
+## 1.1 概要
 
-# 2. 対象環境
+FloatPeek は、登録した画像フォルダを小さなフローティングウィンドウで表示する macOS アプリである。グローバルショートカットで素早く表示・非表示を切り替え、画像や PDF の確認、プレビュー、コピー、外部アプリへの受け渡しを行う。
 
-- OS: macOS
-- 実装言語: Swift
-- UI: SwiftUI
-- macOS 固有機能: AppKit / Quick Look / Quick Look Thumbnailing / Carbon
-- 想定ビルド環境: Xcode
-- 配布形態: ローカル実行・個人利用
-- アプリ形態: 通常の Dock アプリ
-- App Store 配布対応: 現時点では対象外
-- App Sandbox: 現時点では無効前提
+Finder の代替ではなく、スクリーンショットなど頻繁に参照するファイルへ素早くアクセスするための専用ビューアとして実装する。
 
-# 3. 開発・ビルド運用
+## 1.2 設計目標
 
-## 3.1 Xcode 前提
+- グローバルショートカットから即座に表示できる
+- 複数の画像フォルダを少ない操作で切り替えられる
+- 数百件程度のファイルを UI をブロックせず表示できる
+- キーボードだけでも選択、プレビュー、コピー、整理を行える
+- ウィンドウの位置とサイズを維持できる
+- macOS 標準 API を優先し、外部依存を増やさない
 
-`xcodebuild` を使うため、Command Line Tools だけではなく Xcode 本体を前提とする。
+## 1.3 現行スコープ
+
+実装済みの主要機能:
+
+- 複数フォルダの登録、並び替え、選択、永続化
+- 画像・PDF のサムネイル一覧
+- 表示対象拡張子の選択と永続化
+- ファイル名、追加日、変更日によるソート
+- 単一選択、トグル選択、範囲選択
+- 既定アプリで開く、Quick Look、コピー、パスコピー、Finder 表示
+- ゴミ箱への移動
+- 外部アプリへの単一・複数ファイルのドラッグ
+- 表示中フォルダの変更監視と自動再読み込み
+- グローバルショートカット
+- フローティングウィンドウとフレーム復元
+- 英語・日本語表示
+
+現行スコープ外:
+
+- サブフォルダの再帰表示
+- ファイル検索、名前変更、通常の移動、タグ管理
+- 画像編集
+- メニューバー常駐、ログイン時自動起動
+- iCloud 同期
+- App Sandbox、Security-Scoped Bookmark
+- App Store 配布
+
+# 2. 対象環境と技術
+
+| 項目 | 内容 |
+| --- | --- |
+| OS | macOS 14.0 以降 |
+| 言語 | Swift |
+| UI | SwiftUI + AppKit |
+| サムネイル | Quick Look Thumbnailing |
+| プレビュー | Quick Look |
+| ショートカット | Carbon Hot Key API |
+| フォルダ監視 | FSEvents + DispatchSource |
+| 永続化 | UserDefaults |
+| ビルド | Xcode / xcodebuild |
+| Bundle ID | `com.floatpeek.FloatPeek` |
+| Swift Concurrency | `SWIFT_STRICT_CONCURRENCY = complete` |
+| 外部依存 | なし |
+
+アプリは Dock に表示する通常アプリとして動作する。App Sandbox は無効前提で、ユーザーが選択したフォルダパスを直接保存する。
+
+# 3. 機能仕様
+
+## 3.1 起動と終了
+
+起動時に次の処理を行う。
+
+1. 言語、フォルダ一覧、選択中フォルダ、表示設定、ショートカット、ウィンドウフレームを読み込む。
+2. 保存済みフォルダがあれば対象ファイルを非同期で読み込む。
+3. 保存済みグローバルショートカットを Carbon API へ登録する。
+4. ウィンドウ表示中は選択中フォルダの監視を開始する。
+
+最後のウィンドウを閉じてもアプリは終了しない。クローズ操作と `Escape` はウィンドウを非表示にし、グローバルショートカットから再表示できる状態を維持する。
+
+アプリを非表示にした場合は Quick Look を閉じ、フォルダ監視を停止する。
+
+## 3.2 フォルダ管理
+
+利用者向け UI では内部の `Tab` という名称を表示せず、`Folder` / `フォルダ` と表記する。型名と保存キーは互換性のため `FolderTab` / `folderTabs` を維持する。
+
+各 `FolderTab` は次の情報を持つ。
+
+- 永続的な UUID
+- 表示名
+- 対象フォルダの絶対パス
+
+設定画面で次の操作を行える。
+
+- フォルダの追加・削除
+- 表示名の編集
+- `NSOpenPanel` による対象ディレクトリの選択
+- ドラッグハンドルによる表示順変更
+- 起動中に表示するフォルダの選択
+- 現在のフォルダの手動再読み込み
+
+フォルダ選択パネルの条件:
+
+```swift
+panel.canChooseDirectories = true
+panel.canChooseFiles = false
+panel.allowsMultipleSelection = false
+```
+
+保存済みフォルダがない初回起動時は、対象パスを持たないフォルダ項目を1件作る。利用者がすべて削除した状態は許容する。
+
+設定画面の編集内容は下書きとして保持する。`Save` 成功時だけ実設定へ反映し、`Cancel` では破棄する。
+
+旧キー `selectedFolderPath` が存在し、現行のフォルダ配列がない場合は、そのパスを持つ先頭フォルダへ移行する。
+
+## 3.3 対象ファイルと拡張子
+
+対象フォルダ直下の通常ファイルだけを表示する。次の項目は除外する。
+
+- 隠しファイル
+- ディレクトリ
+- サブフォルダ内のファイル
+- 選択されていない拡張子のファイル
+
+対応拡張子:
+
+```text
+jpg
+jpeg
+png
+gif
+heic
+pdf
+```
+
+拡張子の大文字小文字は区別しない。
+
+設定画面では各拡張子をチェックボックスで選択する。初期値は全選択とする。空の選択も有効な設定として保存し、対象ファイルなしの状態を表示する。
+
+保存成功時に新しい拡張子集合を次の両方へ反映する。
+
+- `ImageFileLoader` の列挙条件
+- `FolderMonitor` の監視条件
+
+反映後は現在のフォルダを再読み込みし、表示中であれば監視を再開する。
+
+## 3.4 ソート
+
+ヘッダーの `Sort` メニューで次の表示順を選択できる。
+
+| 選択値 | 動作 |
+| --- | --- |
+| Date Added | 追加日時の降順。同値または取得不可の場合はファイル名昇順 |
+| Date Modified | 変更日時の降順。同値または取得不可の場合はファイル名昇順 |
+| File Name | `localizedStandardCompare` による昇順 |
+
+既定値は `Date Added`。追加日時が取得できない場合は作成日時を代替値にする。ソート条件は起動中だけ保持し、UserDefaults には保存しない。
+
+ソート変更時は再列挙せず、現在の一覧を並び替える。読み込み中にソートが変わった場合は、読込結果へ最新のソート条件を再適用する。
+
+## 3.5 サムネイル一覧
+
+一覧は `ScrollView` と `LazyVGrid` で構成する。各タイルには次を表示する。
+
+- サムネイル
+- ファイル名
+- 選択状態のハイライト
+- 読み込み中または生成失敗を示す状態
+
+`Scale images with window width` が有効な場合:
+
+- 1列表示
+- ウィンドウ幅に追従
+- サムネイル領域は 4:3
+- 元画像の縦横比は維持
+- 生成要求サイズは 32pt 単位で切り上げ
+
+無効な場合:
+
+- 140pt 幅の固定列
+- ウィンドウ幅に応じた複数列
+- サムネイル要求サイズは 120 × 96pt
+
+`ThumbnailProvider` は `QLThumbnailGenerator` を使用する。生成に失敗した場合は `NSImage(contentsOf:)` によるフォールバックを試み、それでも読み込めない場合は失敗表示とする。
+
+キャッシュ仕様:
+
+- `NSCache` によるメモリキャッシュ
+- キーは標準化パス、変更日時、要求サイズ、画面スケール
+- 件数上限 512
+- コスト上限 64 MiB
+- フォルダ変更時に全消去
+- 永続キャッシュなし
+
+## 3.6 選択
+
+クリック操作:
+
+| 操作 | 選択モード |
+| --- | --- |
+| 通常クリック | 対象1件へ置換 |
+| Command クリック | 対象の選択状態をトグル |
+| Shift クリック | アンカーから対象まで範囲選択 |
+
+キーボード操作:
+
+- 矢印キーで主選択を移動する
+- 上下移動量には現在のグリッド列数を使う
+- `Shift` + 矢印キーでアンカーから移動先までを範囲選択する
+- 範囲をアンカー方向へ戻すと選択を縮小する
+- 一覧端を越える入力は無視する
+- 未選択状態で矢印キーを押すと先頭を選択する
+
+選択状態は URL を ID として保持する。再読み込みやソート後は存在しない ID を除外し、主選択とアンカーを整合させる。主選択の変更時は該当タイルを中央付近へスクロールする。
+
+画面下部の表示:
+
+| 状態 | 表示 |
+| --- | --- |
+| 未選択 | `None` / `なし` |
+| 1件 | ファイル名 |
+| 複数 | `N files` / `N個のファイル` |
+
+## 3.7 ファイルを開く
+
+タイルのダブルクリック、`Return`、またはコンテキストメニューの `Open` で macOS の既定アプリを開く。
+
+```swift
+NSWorkspace.shared.open(fileURL)
+```
+
+特定アプリを指定せず、利用者の既定アプリ設定を尊重する。
+
+## 3.8 Quick Look
+
+`Space` またはコンテキストメニューの `Quick Look` で主選択ファイルを表示する。
+
+使用 API:
+
+- `QLPreviewPanel`
+- `QLPreviewPanelDataSource`
+- `QLPreviewPanelDelegate`
+
+Quick Look 表示中に主選択が変わった場合はプレビュー対象を更新する。ウィンドウまたはアプリを非表示にした場合、対象がなくなった場合は閉じる。
+
+## 3.9 コピーと Finder 表示
+
+`FileActionManager` は次の操作を提供する。
+
+| 操作 | 実装 |
+| --- | --- |
+| ファイルをコピー | `NSPasteboard` へ `NSURL` を書き込む |
+| パスをコピー | 改行区切りの絶対パスを文字列として書き込む |
+| Finder に表示 | `NSWorkspace.shared.activateFileViewerSelecting` |
+
+`Command+C` は選択中の全ファイルをコピーする。
+
+コンテキストメニューの対象規則:
+
+- 選択済みタイルから実行: 選択中の全ファイル
+- 未選択タイルから実行: 右クリックした1件だけ
+
+## 3.10 ゴミ箱への移動
+
+`Delete`、`Forward Delete`、またはコンテキストメニューの `Move to Trash` で対象を macOS のゴミ箱へ移動する。
+
+```swift
+NSWorkspace.shared.recycle(fileURLs)
+```
+
+確認ダイアログは表示しない。完全削除は行わない。
+
+処理中の重複要求は無視する。成功後は元の主選択位置を基準に次の未削除ファイルを選ぶ。末尾を削除した場合は直前のファイルを選び、残存ファイルがない場合は選択を解除する。
+
+削除要求後に利用者が別の選択へ移動した場合は、その新しい選択を上書きしない。Quick Look 表示中は新しい主選択へ更新し、対象がなくなれば閉じる。
+
+失敗時は一覧と選択を維持し、対象ファイル名または件数とシステムエラーを警告表示して再読み込みする。
+
+## 3.11 ドラッグ＆ドロップ
+
+`FileDragInteractionView` が SwiftUI と AppKit を橋渡しし、`NSDraggingSession` を開始する。
+
+- 未選択タイルのドラッグ: その1件を選択し、1ファイルを渡す
+- 選択済みタイルのドラッグ: 選択中の全ファイルを渡す
+- Pasteboard writer: `NSURL`
+- 許可する操作: `.copy`
+- ドラッグ中の修飾キーは無視
+
+Finder、Slack などファイル URL のドロップを受け付ける外部アプリを対象とする。
+
+## 3.12 フォルダ監視
+
+ウィンドウ表示中だけ、選択中フォルダを `FolderMonitor` で監視する。
+
+監視対象:
+
+- 選択済み拡張子の通常ファイル
+- 対象フォルダ直下
+- 追加、削除、名前変更、上書き
+- 監視ルート自体の削除、名前変更、失効
+
+監視対象外:
+
+- 隠しファイル
+- サブフォルダとその配下
+- 選択されていない拡張子
+
+実装:
+
+- FSEvents の file events
+- `kFSEventStreamCreateFlagWatchRoot`
+- `DispatchSourceFileSystemObject` によるルート変更の補完
+- 専用シリアルキュー
+- 既定 latency 0.1秒
+- 変更通知の debounce 0.5秒
+
+ウィンドウ非表示・最小化時に監視を停止する。再表示・最小化解除時は一覧を再読み込みして監視を再開する。フォルダ切替または拡張子変更時は旧監視を停止してから新条件で開始する。
+
+監視開始に失敗してもアプリは継続し、手動再読み込みは利用可能とする。
+
+## 3.13 グローバルショートカット
+
+初期値:
+
+```text
+Command + Shift + 1
+```
+
+実装 API:
+
+- `RegisterEventHotKey`
+- `UnregisterEventHotKey`
+- `InstallEventHandler`
+
+記録可能なキーは英字、数字、Space、Return、Tab、Escape、F1〜F12。少なくとも1つの修飾キーを必要とする。
+
+設定保存時は、まず新しいショートカットの登録を試す。登録に失敗した場合は既存登録を復元し、下書き中の他設定も保存しない。起動時の登録失敗は警告ダイアログを表示する。
+
+`Restore Default` はショートカットだけを初期値へ戻す。
+
+## 3.14 ウィンドウ
+
+初期値:
+
+| 項目 | 値 |
+| --- | --- |
+| 幅 | 160pt |
+| 高さ | 600pt |
+| 最小幅 | 160pt |
+| 最小高さ | 480pt |
+| レベル | `.floating` |
+
+設定:
+
+```swift
+window.tabbingMode = .disallowed
+window.level = .floating
+window.collectionBehavior.insert(.canJoinAllSpaces)
+window.collectionBehavior.insert(.fullScreenAuxiliary)
+window.isReleasedWhenClosed = false
+```
+
+初回表示位置は、マウスポインタのあるディスプレイの `visibleFrame` 左上とする。該当画面を取得できない場合はメイン画面、さらに取得できない場合は `NSScreen.screens[0]` を使う。
+
+ウィンドウ移動、リサイズ、非表示、クローズ時に `NSStringFromRect` でフレームを保存する。復元時は現在のディスプレイ構成を確認し、表示領域外の位置と過大なサイズを `visibleFrame` 内へ補正する。
+
+表示時は次の処理を行う。
+
+1. ウィンドウ設定を再適用
+2. 保存フレームまたは初期位置を適用
+3. `makeKeyAndOrderFront`
+4. `NSApp.activate(ignoringOtherApps: true)`
+5. 一覧再読み込み
+6. フォルダ監視開始
+
+フルスクリーンアプリ、Mission Control、複数 Spaces をまたぐ完全な最前面動作は保証しない。
+
+## 3.15 表示言語
+
+対応言語:
+
+- System Default
+- English
+- Japanese
+
+System Default では macOS の優先言語から英語または日本語を選び、対応外の言語では英語へフォールバックする。
+
+`LocalizationManager` が言語別 bundle を明示的に読み込み、SwiftUI の locale とアプリ内文字列を更新する。選択値は即時に UserDefaults へ保存されるが、設定画面では `Save` 成功時に下書き値を `LocalizationManager` へ適用する。
+
+# 4. UI 仕様
+
+## 4.1 メイン画面
+
+上から次の領域で構成する。
+
+1. フォルダ一覧
+2. ソートメニュー
+3. サムネイルグリッドまたは状態表示
+4. 選択中ファイル表示
+
+フォルダ一覧:
+
+- 縦スクロール
+- 各行にフォルダアイコンと表示名
+- 選択中の行をアクセントカラーで強調
+- 最大高さ 160pt
+- フォルダ操作ボタンは配置しない
+
+フォルダ追加、削除、名称変更、対象選択、並び替え、手動再読み込みは設定画面に集約する。
+
+## 4.2 状態表示
+
+`ImageBrowserViewModel.DisplayState`:
+
+| 状態 | 表示 |
+| --- | --- |
+| `loading` | `Loading…` |
+| `noFolderSelected` かつ項目なし | `No folders configured` / `Add a folder in Settings.` |
+| `noFolderSelected` | `No folder selected` / `Choose the folder in Settings.` |
+| `cannotAccessFolder` | `Cannot access folder` / `Choose another folder.` |
+| `noImages` | `No supported files found` / 対応形式一覧 |
+| `loaded` | サムネイルグリッド |
+
+## 4.3 設定画面
+
+メニューバーの `Settings…` または `Command+,` で表示する。幅は 560pt。
+
+セクション:
+
+1. Folders
+2. Display
+3. Language
+4. Global Shortcut
+5. Actions
+
+Folders:
+
+- 追加ボタン
+- ドラッグハンドル
+- 表示対象を示す選択ボタン
+- 名前入力
+- フォルダ選択
+- 削除
+- パス表示
+- 現在のフォルダの再読み込み
+
+Display:
+
+- `Scale images with window width`
+- `.jpg`、`.jpeg`、`.png`、`.gif`、`.heic`、`.pdf` のチェックボックス
+
+Actions:
+
+- `Restore Default`
+- `Cancel`
+- `Save`
+
+`Save` は default action とする。ショートカット検証または登録に失敗した場合は画面を閉じず、エラーメッセージを表示する。
+
+## 4.4 コンテキストメニュー
+
+表示順:
+
+1. Open
+2. Quick Look
+3. 区切り
+4. Copy
+5. Copy File Path
+6. 区切り
+7. Reveal in Finder
+8. 区切り
+9. Move to Trash
+
+## 4.5 キーボード
+
+| 入力 | 動作 |
+| --- | --- |
+| 設定済みグローバルショートカット | ウィンドウ表示・非表示 |
+| `Command+,` | 設定画面 |
+| `Control+Tab` | 次のフォルダ |
+| `Control+Shift+Tab` | 前のフォルダ |
+| `Space` | Quick Look 表示・非表示 |
+| `Escape` | ウィンドウを非表示 |
+| `Return` / テンキー `Enter` | 主選択を既定アプリで開く |
+| `Command+C` | 選択中ファイルをコピー |
+| `Delete` / `Forward Delete` | 選択中ファイルをゴミ箱へ移動 |
+| 矢印キー | 主選択を移動 |
+| `Shift` + 矢印キー | 範囲選択を拡張・縮小 |
+
+ローカルキーイベントは `NSEvent.addLocalMonitorForEvents(matching: .keyDown)` で処理する。設定などのモーダル画面表示中はメイン画面側のキー処理を行わない。
+
+削除キーは修飾キーなし、かつキーリピートではない場合だけ処理する。フォルダ切替は表に記載した修飾キーの完全一致だけを処理する。
+
+# 5. データモデルと永続化
+
+## 5.1 ImageFile
+
+```swift
+struct ImageFile: Identifiable, Hashable {
+    let url: URL
+    let addedAt: Date?
+    let modifiedAt: Date?
+}
+```
+
+`id` は URL、`fileName` は `url.lastPathComponent` から算出する。再読み込みで ID を安定させるため UUID は生成しない。
+
+## 5.2 FolderTab
+
+```swift
+struct FolderTab: Codable, Equatable, Identifiable {
+    let id: UUID
+    var name: String
+    var folderPath: String
+}
+```
+
+表示名の優先順位:
+
+1. 空白を除いた設定名
+2. フォルダの最終パス要素
+3. `Untitled Folder` / `名称未設定のフォルダ`
+
+## 5.3 ImageSelection
+
+保持状態:
+
+- `focusedID`: 主選択
+- `selectedIDs`: 選択集合
+- `anchorID`: 範囲選択の基準
+
+選択操作は `replace`、`toggle`、`range` の3モードとする。
+
+## 5.4 KeyboardShortcut
+
+```swift
+struct KeyboardShortcut: Equatable {
+    let keyCode: UInt32
+    let carbonModifiers: UInt32
+}
+```
+
+Carbon 用キーコードと修飾キーを保持し、表示名生成、`NSEvent` からの変換、妥当性検証、保存・読込を担当する。
+
+## 5.5 UserDefaults
+
+| キー | 型 | 既定値・用途 |
+| --- | --- | --- |
+| `folderTabs` | JSON Data | 未保存時は空パスの項目1件 |
+| `selectedFolderTabID` | UUID String | 有効な保存値、なければ先頭 |
+| `selectedFolderPath` | String | 旧バージョンからの移行読込専用 |
+| `displayedFileExtensions` | String Array | 未保存時は全対応拡張子 |
+| `scaleImagesWithWindow` | Bool | `true` |
+| `shortcutKeyCode` | Int | `1` キー |
+| `shortcutModifiers` | Int | Command + Shift |
+| `language` | String | `system` |
+| `windowFrame` | Rect String | 未保存時は初期フレーム |
+
+`displayedFileExtensions` の空配列は未保存と区別し、「すべて非選択」として復元する。未知の拡張子は読込時に対応集合との積集合から除外する。
+
+テスト実行中は `AppEnvironment` が `InMemoryPreferences` を選択し、標準 UserDefaults を汚染しない。判定には `XCTestConfigurationFilePath` を使う。
+
+# 6. アーキテクチャ
+
+## 6.1 状態所有
+
+| 状態 | 所有者 |
+| --- | --- |
+| フォルダ一覧・選択中フォルダ | `FolderTabManager` |
+| ファイル一覧・ソート・選択・操作状態 | `ImageBrowserViewModel` |
+| 設定画面の下書き | `SettingsViewModel` |
+| 表示言語 | `LocalizationManager` |
+| 設定画面とウィンドウ可視性イベント | `AppCoordinator` |
+| ウィンドウ参照・フレーム | `WindowManager` |
+| Quick Look 対象 | `QuickLookManager` |
+
+## 6.2 コンポーネント責務
+
+### アプリ・画面
+
+| コンポーネント | 責務 |
+| --- | --- |
+| `FloatPeekApp` | Scene、環境オブジェクト、設定コマンド、起動時ショートカット登録 |
+| `ContentView` | メイン画面構成、キー操作、Quick Look 連携、設定画面生成 |
+| `HeaderView` | フォルダ切替、ソート選択 |
+| `ImageGridView` | 列構成、タイル配置、主選択へのスクロール |
+| `ImageFileTile` | サムネイル状態、ファイル名、選択表示 |
+| `SettingsView` | 設定下書きの編集と保存・破棄 |
+| `StateMessageView` | 空・エラー状態表示 |
+
+### ViewModel・モデル
+
+| コンポーネント | 責務 |
+| --- | --- |
+| `ImageBrowserViewModel` | 非同期読込、表示状態、ソート、選択、ファイル操作、監視制御 |
+| `SettingsViewModel` | 設定下書き、フォルダ編集、検証、保存時反映 |
+| `FolderTabManager` | フォルダ配列と選択の永続化、旧設定移行 |
+| `ImageSelection` | 主選択、集合、アンカー、移動と整合 |
+| `AppSettings` | 保存キー、既定値、表示設定の保存・読込 |
+| `LocalizationManager` | 言語解決、文字列取得、locale 提供 |
+
+### サービス・AppKit ブリッジ
+
+| コンポーネント | 責務 |
+| --- | --- |
+| `ImageFileLoader` | 直下ファイル列挙、拡張子フィルタ、日付取得、ソート |
+| `FolderMonitor` | FSEvents、ルート監視、debounce |
+| `ThumbnailProvider` | 非同期サムネイル生成とメモリキャッシュ |
+| `FileOpener` | 既定アプリで開く |
+| `FileActionManager` | コピー、パスコピー、Finder 表示、ゴミ箱 |
+| `HotKeyManager` | Carbon ショートカット登録・復元 |
+| `QuickLookManager` | `QLPreviewPanel` の表示・更新・終了 |
+| `WindowManager` | 表示・非表示、floating 設定、フレーム保存・補正 |
+| `FolderManager` | `NSOpenPanel` によるフォルダ選択 |
+| `AppCoordinator` | ウィンドウ可視性と設定表示のイベント連携 |
+| `KeyboardEventBridge` | ローカルキーイベントの分類と通知 |
+| `FileDragInteractionView` | クリック、ダブルクリック、右クリック、ドラッグ |
+| `ShortcutRecorderView` | ショートカット入力の AppKit ブリッジ |
+| `WindowAccessor` | SwiftUI から `NSWindow` を取得 |
+
+# 7. 状態遷移と非同期処理
+
+## 7.1 フォルダ切替
+
+```text
+FolderTabManager.selectTab
+  → ContentView が selectedTabID の変更を監視
+  → ImageBrowserViewModel.setFolderURL
+  → 現在の読込をキャンセル
+  → 新フォルダを非同期読込
+  → 旧監視を停止
+  → 新フォルダの監視を開始
+  → サムネイルキャッシュを消去
+```
+
+## 7.2 ファイル読込
+
+`ImageBrowserViewModel` は `@MainActor` で UI 状態を管理する。ファイル列挙は `ImageFileLoader.loadImagesAsync` が detached task で実行する。
+
+読込ごとに generation を増やし、完了時に次を検証する。
+
+- Task がキャンセルされていない
+- generation が最新
+- 対象フォルダが現在値と一致
+
+古い読込結果は UI へ反映しない。キャンセル、フォルダ切替、連続再読み込みによる競合を防ぐ。
+
+## 7.3 設定保存
+
+```text
+SettingsView の下書き
+  → ショートカット妥当性検証
+  → 新ショートカット登録
+  → 成功時だけ各設定を永続化
+  → FolderTabManager / LocalizationManager へ反映
+  → 画像拡大設定を ContentView へ反映
+  → 拡張子集合を ImageBrowserViewModel へ反映
+  → 必要に応じて再読込・監視再開
+```
+
+ショートカット登録失敗時は、それ以降の保存処理を行わない。
+
+## 7.4 ウィンドウ可視性
+
+`WindowManager` は `AppCoordinator` の revision を更新する。`ContentView` が revision の変化を監視し、表示時に再読込・監視開始、非表示時に監視停止を行う。
+
+## 7.5 Concurrency 方針
+
+- UI 状態と AppKit 操作は `@MainActor`
+- ファイル列挙はキャンセル可能な detached task
+- フォルダ監視の内部状態は専用シリアル DispatchQueue
+- FSEvents callback から UI へは `Task { @MainActor in ... }`
+- サムネイル生成は continuation で async 化
+- Task cancellation 時は Quick Look Thumbnail request もキャンセル
+- `FolderMonitor` と `ImageFileLoader` は Sendable 境界を明示
+
+# 8. エラー処理
+
+| 条件 | 動作 |
+| --- | --- |
+| フォルダ未設定 | 設定画面での選択を促す |
+| フォルダアクセス不可 | 一覧と選択を空にし、再選択を促す |
+| 対象ファイルなし | 対応ファイルなしを表示 |
+| サムネイル生成失敗 | タイル内で失敗表示し、アプリは継続 |
+| ショートカットが無効 | 設定画面にエラーを表示 |
+| ショートカット登録失敗 | 旧登録を復元し、下書きを保存しない |
+| 起動時ショートカット登録失敗 | `NSAlert` で設定変更を促す |
+| ゴミ箱移動失敗 | 一覧・選択を維持し、システムエラーを表示 |
+| フォルダ監視開始失敗 | 自動監視なしで継続し、手動再読込を維持 |
+
+エラーを理由にアプリ全体を終了させない。
+
+# 9. パフォーマンス要件
+
+- 数百件程度のファイルでメインスレッドを長時間ブロックしない
+- 一覧は `LazyVGrid` で必要範囲だけ描画する
+- サムネイルは非同期生成し、メモリキャッシュを利用する
+- 連続 FSEvents は約0.5秒にまとめる
+- 不要になったファイル読込とサムネイル要求をキャンセルする
+- 監視はウィンドウ表示中だけ有効にする
+
+数千件規模のフォルダに対する仮想化や永続インデックスは現時点で必須としない。
+
+# 10. 権限・セキュリティ・制約
+
+## 10.1 ファイルアクセス
+
+App Sandbox は無効。ユーザーが選択した絶対パスを UserDefaults に保存し、次回起動時に直接参照する。
+
+Sandbox を有効化する場合は Security-Scoped Bookmark の設計と移行が必要になる。
+
+## 10.2 ファイル変更
+
+実装する変更操作は macOS のゴミ箱への移動だけとする。完全削除、上書き、名前変更、通常移動は行わない。
+
+ゴミ箱移動には確認ダイアログがないため、UI と README に明記する。
+
+## 10.3 配布署名
+
+標準の配布ワークフローは ad-hoc 署名を使用し、Apple 公証を行わない。配布者の身元を証明する署名ではないため、初回起動時に macOS の許可操作が必要になる。
+
+# 11. 開発・ビルド・テスト
+
+## 11.1 必要環境
+
+- macOS
+- Xcode 本体
+- Xcode Command Line Tools
 
 確認:
 
@@ -30,23 +733,28 @@ FloatPeek は、登録した複数の画像フォルダをグローバルショ�
 xcodebuild -version
 ```
 
-Xcode 本体が入っているのに選択されていない場合:
+Xcode 本体を明示してビルドするため、コマンドでは `DEVELOPER_DIR` を指定する。
+
+## 11.2 Debug ビルド
+
+リポジトリルートで実行する。
 
 ```sh
-sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+env DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
+  xcodebuild build \
+  -project FloatPeek.xcodeproj \
+  -scheme FloatPeek \
+  -destination 'platform=macOS' \
+  -derivedDataPath .build/DerivedData
 ```
 
-## 3.2 共通ビルド出力パス
-
-開発時の `DerivedData` は、リポジトリ直下の `.build/DerivedData` に統一する。
-
-リポジトリルート:
+成果物:
 
 ```text
-.
+.build/DerivedData/Build/Products/Debug/FloatPeek.app
 ```
 
-共通ビルドコマンド:
+## 11.3 全テスト
 
 ```sh
 env DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
@@ -57,736 +765,181 @@ env DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
   -derivedDataPath .build/DerivedData
 ```
 
-ビルド済みアプリの共通パス:
+変更箇所に近いテストから実行し、最後に全テストを実行する。
 
-```text
-.build/DerivedData/Build/Products/Debug/FloatPeek.app
-```
+## 11.4 テスト構成
 
-一時検証目的で `/private/tmp` 配下に `DerivedData` を出すことは可能だが、ユーザーが起動するビルド成果物として共有する場合は上記パスを使う。
-
-# 4. 目的
-
-- よく使う画像保存フォルダをショートカットで即座に表示する
-- 画像をサムネイル一覧で確認する
-- 必要な画像を既定アプリで素早く開く
-- Space キーで Quick Look プレビューする
-- Slack や Finder などの外部アプリへ画像・PDFファイルをドラッグ＆ドロップする
-- ウィンドウの位置とサイズを維持し、表示・非表示を繰り返しても作業環境を崩さない
-- Finder を探したり切り替えたりする手間を減らす
-
-# 5. 現行スコープ
-
-## 5.1 実装済み機能
-
-- グローバルショートカットでアプリ画面を表示・非表示
-- 設定画面によるグローバルショートカット変更
-- 複数のフォルダと選択中フォルダの保存・読み込み
-- 縦方向のフォルダ一覧による表示フォルダ切り替え
-- 設定画面でのフォルダ追加・削除・名称・対象設定・ドラッグによる表示順変更・再読み込み
-- OSの優先言語を既定値とする英語・日本語表示
-- 設定画面での表示言語切り替え
-- フォルダ直下の画像・PDFファイル一覧表示
-- Quick Look Thumbnailing による非同期サムネイル生成
-- サムネイルのメモリキャッシュ
-- 単一選択、Command クリックによるトグル選択、Shift クリックによる範囲選択
-- ダブルクリックまたは Enter キーによる既定アプリでのオープン
-- Space キーによる Quick Look プレビュー
-- Quick Look 表示中に選択画像を変更した場合のプレビュー更新
-- Escape キーによるアプリ画面の非表示
-- 矢印キーによる選択移動
-- タイルから外部アプリへのドラッグ＆ドロップ
-- 複数選択中のファイル群のドラッグ＆ドロップ
-- タイルのコンテキストメニューからのオープン、Quick Look、コピー、パスコピー、Finder表示
-- Command + C による選択中ファイルのクリップボードへのコピー
-- 選択中ファイルの Finder 表示
-- 通常ウィンドウより前面に表示されやすいフローティングウィンドウ
-- ウィンドウ位置・サイズの保存と復元
-- 表示中の対象フォルダ監視による画像・PDF一覧の自動更新
-- Dock に表示する専用アプリアイコン
-
-## 5.2 現時点で対象外
-
-- ファイル削除
-- ファイル名変更
-- ファイル移動
-- タグ管理
-- 検索
-- サブフォルダ階層表示
-- メニューバー常駐
-- ログイン時自動起動
-- Security-Scoped Bookmark 対応
-- App Sandbox 対応
-- App Store 配布
-- iCloud 同期
-- 画像編集機能
-
-# 6. 基本仕様
-
-## 6.1 アプリ起動
-
-アプリ起動後、保存済みタブと選択中タブを復元し、選択中タブにフォルダが設定されていれば、そのフォルダ内の画像・PDFファイル一覧を読み込む。
-
-タブ未登録、選択中タブのフォルダ未設定、または保存済みフォルダにアクセスできない場合は、設定画面でのタブまたはフォルダ設定を促す状態メッセージを表示する。
-
-アプリ起動時とウィンドウ表示時に画像一覧を再読み込みする。
-
-ウィンドウ表示中は FSEvents で対象フォルダを監視する。対象フォルダ直下の対応ファイルが追加・削除・名前変更・上書きされた場合、連続する変更イベントを約0.5秒にまとめて画像一覧を自動更新する。サブフォルダ内、隠しファイル、非対応拡張子の変更は自動更新の対象外とする。
-
-ウィンドウを非表示または最小化した場合は監視を停止する。再表示または最小化解除時に画像一覧を再読み込みしてから監視を再開する。監視開始に失敗した場合も、手動再読み込みは引き続き利用できる。
-
-## 6.2 タブ・フォルダ設定
-
-ユーザーは複数のタブを登録でき、各タブに名称と対象フォルダを1つ設定できる。タブの追加・削除・名称変更・フォルダ選択は設定画面に集約する。
-
-画面上ではタブという表現を使わず、各項目を `Folder` / `フォルダ` と表示する。内部のデータ型と保存キーは互換性維持のためタブ名称を継続する。
-
-設定画面の各フォルダ行にはドラッグハンドルを表示する。ハンドルを別の行へドラッグすると下書き配列を並び替え、`Save` 成功時に表示順として永続化する。`Cancel` の場合は並び替えも破棄する。
-
-設定画面のフォルダ選択ボタンから `NSOpenPanel` を表示し、ディレクトリを1つ選択する。設定画面での変更は下書きとして保持し、`Save` 成功時だけ永続化する。`Cancel` の場合は変更を破棄する。
-
-設定条件:
-
-```swift
-panel.canChooseDirectories = true
-panel.canChooseFiles = false
-panel.allowsMultipleSelection = false
-```
-
-タブ配列は JSON エンコードし、選択中タブIDとともに `UserDefaults` に保存する。
-
-保存キー:
-
-```text
-folderTabs
-selectedFolderTabID
-```
-
-旧バージョンの `selectedFolderPath` が保存されている場合は、初回読み込み時にそのフォルダを持つ先頭タブへ移行する。
-
-App Sandbox 無効のローカル利用を前提とし、Security-Scoped Bookmark は現時点では実装しない。
-
-## 6.3 対象ファイル
-
-対象フォルダ直下にある画像・PDFファイルのみを表示する。サブフォルダ内のファイルは表示しない。
-
-対応拡張子:
-
-- jpg
-- jpeg
-- png
-- gif
-- heic
-- pdf
-
-拡張子の大文字小文字は区別しない。
-
-ヘッダーの `Sort` メニューから表示順を変更できる。
-
-必須ソート条件:
-
-| ソート条件 | 表示順 |
+| テスト | 主な対象 |
 | --- | --- |
-| Date Added | ファイル追加日時の新しい順。同じ日時の場合はファイル名昇順 |
-| Date Modified | ファイル変更日時の新しい順。同じ日時の場合はファイル名昇順 |
-| File Name | ファイル名昇順 |
+| `AppLifecycleTests` | 環境、言語、フォルダ永続化・移行、ウィンドウ |
+| `AppCoordinatorTests` | 設定表示、可視性 revision |
+| `ImageFileLoaderTests` | 拡張子フィルタ、ソート、アクセスエラー |
+| `FolderMonitorTests` | 変更通知、debounce、除外条件、停止・切替 |
+| `ImageSelectionTests` | 単一・複数・範囲選択、移動、整合 |
+| `ImageBrowserFileActionTests` | コピー、ゴミ箱、コンテキスト、キー操作 |
+| `QuickLookManagerTests` | 表示終了条件 |
+| `ThumbnailProviderTests` | aspect fit |
+| `SettingsViewModelTests` | 下書き、保存、失敗時非反映、拡張子設定 |
 
-既定表示は `Date Added` とする。ファイル追加日時が取得できない場合は作成日時を代替値として利用する。
+テスト環境では `InMemoryPreferences` を使用し、ユーザーの設定を変更しない。
 
-## 6.4 サムネイル表示
+# 12. リリースと配布
 
-画像・PDFファイルは `ScrollView` と `LazyVGrid` を使ってタイル状に表示する。
+## 12.1 リリース成果物
 
-各タイルには以下を表示する。
+バージョン `X.Y.Z` に対して次を生成する。
 
-- サムネイル
-- ファイル名
-- 選択状態のハイライト
+```text
+dist/FloatPeek-X.Y.Z.zip
+dist/FloatPeek-X.Y.Z.zip.sha256
+```
 
-サムネイル生成には Quick Look Thumbnailing を使う。
+アプリ本体は Apple Silicon と Intel の Universal Binary とする。
 
-使用 API:
+## 12.2 ローカルリリースビルド
 
-- `QLThumbnailGenerator`
-- `QLThumbnailGenerator.Request`
+```sh
+./Scripts/build-release.sh 1.0.0
+```
 
-サムネイル生成は非同期で行い、生成済みサムネイルは `ThumbnailProvider` が URL をキーにメモリキャッシュする。永続キャッシュは現時点では実装しない。
+スクリプトの処理:
 
-## 6.5 選択
+1. `X.Y.Z` 形式の検証
+2. 一時 DerivedData への Release ビルド
+3. `arm64` / `x86_64` の生成確認
+4. 署名
+5. Bundle version の確認
+6. 必要な場合は公証と stapling
+7. ZIP と SHA-256 の生成
 
-クリック操作:
+既存の同名 ZIP または checksum は上書きしない。
 
-| 操作 | 動作 |
+既定の署名は `SIGNING_IDENTITY=-` による ad-hoc 署名。公証する場合は次のすべてを指定する。
+
+```text
+SIGNING_IDENTITY
+APPLE_ID
+APPLE_TEAM_ID
+APPLE_APP_SPECIFIC_PASSWORD
+```
+
+## 12.3 GitHub Actions
+
+`.github/workflows/release.yml` は `v*` タグ push で起動する。正式なタグ形式は `vX.Y.Z`。
+
+ワークフロー:
+
+1. タグ形式と Secret を検証
+2. ad-hoc 署名の Universal Binary を作成
+3. GitHub Release に ZIP と checksum を公開
+4. Homebrew Cask をテンプレートから生成
+5. `brew style --cask` で検証
+6. `2zk/homebrew-tap` の `Casks/floatpeek.rb` を更新
+
+必要な Repository Secret:
+
+| Secret | 用途 |
 | --- | --- |
-| 通常クリック | 選択をクリック対象だけに置き換える |
-| Command クリック | クリック対象の選択状態をトグルする |
-| Shift クリック | 選択アンカーからクリック対象までを範囲選択する |
+| `HOMEBREW_TAP_GITHUB_TOKEN` | `2zk/homebrew-tap` の Contents 読み書き |
 
-Shift キーを押しながら矢印キーで主選択を移動した場合も、選択アンカーから移動先までを範囲選択する。アンカー方向へ戻した場合は選択範囲を縮小する。
+token は fine-grained personal access token とし、対象リポジトリを `homebrew-tap` のみに限定する。
 
-選択中ファイルは画面下部に表示する。
+ワークフロー自身は FloatPeek の GitHub Release 作成に `contents: write` を使用する。
 
-表示ルール:
+## 12.4 Homebrew Tap
 
-- 未選択: `None`
-- 1件選択: ファイル名
-- 複数選択: `N files`
-
-主選択画像は Quick Look や Enter キー操作の対象になる。
-
-## 6.6 画像を開く
-
-タイルをダブルクリック、またはファイル選択中に Enter キーを押すと、そのファイルを macOS の既定アプリで開く。
-
-使用 API:
-
-```swift
-NSWorkspace.shared.open(fileURL)
-```
-
-Preview.app などを明示指定せず、ユーザー環境の既定アプリを尊重する。
-
-## 6.7 Quick Look プレビュー
-
-ファイルを選択した状態で Space キーを押すと、選択中の画像または PDF を Quick Look でプレビュー表示する。
-
-使用 API:
-
-- `QLPreviewPanel`
-- `QLPreviewPanelDataSource`
-- `QLPreviewPanelDelegate`
-
-Quick Look 表示中に選択画像が変わった場合は、表示中のプレビュー対象も更新する。
-
-## 6.8 ファイルをゴミ箱へ移動
-
-ファイル選択中に Delete または Forward Delete キーを押すと、選択中の全ファイルを確認なしでまとめてゴミ箱へ移動する。右クリックメニューの `Move to Trash` は、選択済みタイルから実行した場合は選択中の全ファイル、未選択タイルから実行した場合はその1件を対象にする。
-
-使用 API:
-
-```swift
-NSWorkspace.shared.recycle(fileURLs)
-```
-
-移動後は元の主選択位置を基準に次の未削除ファイル、末尾の場合は直前の未削除ファイルを単一選択する。残存ファイルがない場合は選択を解除する。Quick Look 表示中は新しい主選択へ表示を更新し、残存ファイルがなければ閉じる。
-
-移動に失敗した場合は一覧と選択を維持し、対象ファイル名または対象件数とシステムエラーを警告表示して一覧を再読み込みする。
-
-## 6.9 ドラッグ＆ドロップ
-
-タイルをドラッグすると、画像・PDFファイル URL を外部アプリへ渡す。
-
-実装方式:
-
-- `NSViewRepresentable` による AppKit ブリッジ
-- `NSDraggingItem`
-- `NSDraggingSource`
-- `NSURL` を pasteboard writer として利用
-
-挙動:
-
-- 未選択タイルをドラッグした場合、その1ファイルをドラッグ対象にする
-- 選択済みタイルをドラッグした場合、選択中ファイル群をドラッグ対象にする
-- ドラッグ操作のコピー操作を許可する
-
-## 6.10 グローバルショートカット
-
-グローバルショートカットで、アプリ画面を表示・非表示できる。
-
-初期ショートカット:
+配布先:
 
 ```text
-Command + Shift + 1
+2zk/homebrew-tap
 ```
 
-ショートカットは設定画面から変更できる。保存されたショートカットは次回起動時に読み込む。
+初期準備:
 
-保存キー:
+1. 空でない public repository `2zk/homebrew-tap` を作成
+2. `Contents: Read and write` を持つ fine-grained token を作成
+3. FloatPeek リポジトリへ `HOMEBREW_TAP_GITHUB_TOKEN` を登録
+4. GitHub Actions と必要な workflow permission を有効化
 
-```text
-shortcutKeyCode
-shortcutModifiers
+`Homebrew/floatpeek.rb.template` にはバージョンと SHA-256 のプレースホルダを持たせる。`Scripts/render-homebrew-cask.sh` が値を検証して Cask を生成する。
+
+Cask は次を定義する。
+
+- GitHub Release の ZIP
+- macOS Sonoma 以降
+- `FloatPeek.app`
+- アンインストール時に削除する preferences と saved state
+- ad-hoc 署名・未公証に関する caveat
+
+## 12.5 リリース手順
+
+1. 対象変更を `main` に反映する。
+2. 全テストを成功させる。
+3. 未公開のバージョンタグを作成する。
+4. タグを push する。
+
+```sh
+git tag v1.0.0
+git push origin v1.0.0
 ```
 
-実装方式:
-
-- Carbon `RegisterEventHotKey`
-- Carbon `UnregisterEventHotKey`
-
-登録に失敗した場合は、設定画面にエラーメッセージを表示し、既存ショートカット登録を維持する。
-
-## 6.11 アプリ画面の表示・非表示
-
-グローバルショートカットを押した場合の動作:
-
-- アプリ画面が非表示の場合: 表示する
-- アプリ画面が表示中の場合: 非表示にする
-
-表示時には以下を行う。
-
-- ウィンドウ設定を再適用する
-- 保存済みウィンドウフレームがあれば復元する
-- 保存済みフレームがなければ初期位置に配置する
-- ウィンドウを前面に出す
-- `NSApp.activate(ignoringOtherApps: true)` を実行する
-- `AppCoordinator` の表示改訂番号を更新する
-- 画像一覧を再読み込みし、選択中タブのフォルダ監視を再開する
-
-Escape キー、またはウィンドウのクローズ操作ではアプリを終了せず、ウィンドウを非表示にする。
-
-## 6.12 ウィンドウ表示位置・サイズ
-
-初期サイズ:
-
-- 幅: 160px
-- 高さ: 600px
-- 最小幅: 160px
-- 最小高さ: 480px
-
-未保存状態でショートカット表示する場合は、表示対象ディスプレイの左上寄りに配置する。
-
-表示対象ディスプレイの優先順:
-
-- マウスポインタがあるディスプレイ
-- 取得できない場合はメインディスプレイ
-- それも取得できない場合は `NSScreen.screens[0]`
-
-初期配置は対象ディスプレイの `visibleFrame` に収める。メニューバーや Dock と重ならないよう、`visibleFrame` を基準にする。
-
-## 6.13 ウィンドウ位置・サイズの永続化
-
-アプリを一度起動した後は、ユーザーが調整したウィンドウ位置とサイズを保存する。
-
-保存タイミング:
-
-- ウィンドウ移動時
-- ウィンドウリサイズ時
-- ショートカットや Escape による非表示時
-- ウィンドウクローズ操作時
-
-保存キー:
-
-```text
-windowFrame
-```
-
-保存形式:
-
-```swift
-NSStringFromRect(window.frame)
-```
-
-復元時は `NSRectFromString` で読み込み、幅・高さが正の値であることを確認する。
-
-保存済みフレームが現在接続されているディスプレイの表示可能領域から外れる場合は、以下の補正を行う。
-
-- 保存フレームと交差するディスプレイを優先する
-- 見つからない場合は現在のターゲットディスプレイを使う
-- 幅・高さは `visibleFrame` を超えないよう縮める
-- `x` / `y` は `visibleFrame` 内に収まるよう clamp する
-
-これにより、ショートカットで非表示 → 再表示しても、ウィンドウサイズや位置が毎回初期値に戻らない。
-
-## 6.14 常に前面に表示
-
-アプリ画面は通常のウィンドウより前面に表示されやすいウィンドウとして扱う。
-
-設定:
-
-```swift
-window.level = .floating
-window.collectionBehavior.insert(.canJoinAllSpaces)
-window.collectionBehavior.insert(.fullScreenAuxiliary)
-window.isReleasedWhenClosed = false
-```
-
-通常のデスクトップ環境で他アプリウィンドウに隠れにくいことを重視する。macOS のフルスクリーンアプリ、Mission Control、複数 Spaces をまたぐ完全な挙動保証は現時点では対象外とする。
-
-## 6.15 表示言語
-
-対応言語は英語と日本語とする。既定値は `System Default` で、OSの優先言語から英語または日本語を選ぶ。対応外の言語環境では英語へフォールバックする。
-
-設定画面では以下から明示的に選択できる。
-
-- System Default
-- English
-- Japanese
-
-選択値は `language` キーで `UserDefaults` に保存し、メニュー、設定項目、状態メッセージなどアプリ全体へ反映する。
-
-# 7. UI 仕様
-
-## 7.1 メイン画面
-
-メイン画面には以下を表示する。
-
-- 見出しを付けない縦方向のフォルダ一覧
-- ソート条件メニュー
-- 画像・PDFサムネイル一覧
-- 選択中ファイル表示
-
-フォルダの追加・削除・名称変更・対象選択・手動再読み込みはメイン画面に置かず、設定画面に集約する。
-
-画像がない場合、フォルダ未設定の場合、アクセスできない場合は、グリッド部分に状態メッセージを表示する。
-
-`Scale images with window width` が有効な場合、サムネイル一覧を1列表示とし、ウィンドウの横幅に合わせて画像領域を4:3の比率で拡大する。画像自体の縦横比は維持する。サムネイル生成サイズは表示幅へ追従し、32pt単位で更新する。
-
-設定が無効な場合は、幅140ptの固定タイルをウィンドウ幅に応じた複数列で表示し、画像領域の高さは96ptとする。
-
-## 7.2 状態メッセージ
-
-| 状態 | 表示 |
-| --- | --- |
-| フォルダ未登録 | `No folders configured` / `Add a folder in Settings.` |
-| 選択中フォルダの対象未設定 | `No folder selected` / `Choose the folder in Settings.` |
-| フォルダアクセス不可 | `Cannot access folder` / `Choose another folder.` |
-| 対応ファイルなし | `No supported files found` / `Supported formats: jpg, jpeg, png, gif, heic, pdf.` |
-
-## 7.3 設定画面
-
-ディスプレイ上部の macOS メニューバーから `Settings…` を選択すると、設定画面を表示する。
-
-ショートカット:
-
-```text
-Command + ,
-```
-
-メインウィンドウ内には設定ボタンを置かない。設定画面の呼び出しはメニューバーに集約する。
-
-画面要素:
-
-- フォルダ一覧
-- フォルダの追加・削除
-- ドラッグハンドルによる表示順の変更
-- フォルダ名入力欄
-- 各項目の対象フォルダ選択
-- 選択中フォルダの再読み込み
-- ウィンドウ幅に合わせた画像拡大のON/OFF
-- 表示言語選択
-- 現在のショートカット入力欄
-- `Restore Default`
-- `Cancel`
-- `Save`
-- 登録失敗時のエラーメッセージ
-
-ショートカット入力欄は AppKit の `NSViewRepresentable` で実装し、キーイベントから `KeyboardShortcut` を生成する。
-
-# 8. キーボード操作
-
-| 操作 | 動作 |
-| --- | --- |
-| 設定済みグローバルショートカット | アプリ画面を表示・非表示 |
-| `Space` | 選択中画像または PDF を Quick Look 表示 |
-| `Escape` | アプリ画面を非表示 |
-| `Enter` / テンキー `Enter` | 選択中ファイルを既定アプリで開く |
-| `Command + C` | 選択中ファイルをクリップボードへコピー |
-| `Delete` / `Forward Delete` | 選択中の全ファイルをまとめてゴミ箱へ移動 |
-| `←` | 左方向へ選択移動 |
-| `→` | 右方向へ選択移動 |
-| `↑` | 上方向へ選択移動 |
-| `↓` | 下方向へ選択移動 |
-| `Shift` + `←` / `→` / `↑` / `↓` | 選択アンカーから移動先まで範囲選択 |
-
-ローカルキーイベントは `NSEvent.addLocalMonitorForEvents(matching: .keyDown)` で処理する。モーダルウィンドウ表示中はメイン画面側のキー処理を行わない。
-
-# 9. データ構造
-
-## 9.1 ImageFile
-
-画像・PDFファイルを表すモデル。
-
-```swift
-struct ImageFile: Identifiable, Hashable {
-    let id: URL
-    let url: URL
-    let fileName: String
-    let addedAt: Date?
-    let modifiedAt: Date?
-}
-```
-
-`id` はファイル URL を利用する。再読み込み時の SwiftUI 差分更新や選択状態を安定させるため、毎回 UUID は生成しない。
-
-## 9.2 AppSettings
-
-永続化キーと既定値を管理する。
-
-現行キー:
-
-```text
-selectedFolderPath
-shortcutKeyCode
-shortcutModifiers
-windowFrame
-language
-folderTabs
-selectedFolderTabID
-scaleImagesWithWindow
-```
-
-`selectedFolderPath` は旧バージョンからの移行読み込みにのみ利用する。
-
-`scaleImagesWithWindow` が未保存の場合の既定値は `true` とする。
-
-## 9.3 KeyboardShortcut
-
-グローバルショートカットのキーコードと修飾キーを保持する。
-
-```swift
-struct KeyboardShortcut: Equatable {
-    let keyCode: UInt32
-    let carbonModifiers: UInt32
-}
-```
-
-責務:
-
-- Carbon 用 modifier の保持
-- 表示名生成
-- `NSEvent` からのショートカット生成
-- `UserDefaults` への保存・読み込み
-- 対応キーかどうかの検証
-
-# 10. 実装コンポーネント
-
-## 10.1 FloatPeekApp
-
-- SwiftUI アプリエントリポイント
-- `Window` による `ContentView` 表示
-- 初期フレーム制約の指定
-- `AppDelegate` による起動時ショートカット登録
-- `LocalizationManager`、`FolderTabManager`、`AppCoordinator` の環境注入
-
-## 10.2 ContentView
-
-- メイン画面の構成
-- ヘッダー、状態表示、画像グリッド、選択中表示の配置
-- キーボードイベント処理
-- Quick Look 更新
-- ウィンドウアクセサ経由の `WindowManager` 設定
-- `AppCoordinator` の改訂番号に応じた再読み込み・監視開始・停止
-- 画像拡大設定に応じたグリッド列数の決定
-- 設定画面の表示と `SettingsViewModel` の生成
-
-## 10.3 ImageBrowserViewModel
-
-- フォルダ URL と画像一覧の状態管理
-- 表示状態の管理
-- ソート条件の管理
-- `ImageSelection` を使った選択状態の公開
-- 選択中ファイルのオープン
-- 再読み込み時の選択状態の整合
-
-## 10.4 ImageSelection
-
-- 単一・トグル・範囲選択
-- 選択アンカーと主選択IDの管理
-- 矢印キーとグリッド列数に基づく選択移動
-- 再読み込み・ソート後に存在しない選択IDを除外
-
-## 10.5 WindowManager
-
-- ウィンドウ参照の解決
-- 表示・非表示
-- `NSWindowDelegate` による close / move / resize 処理
-- フローティングウィンドウ設定
-- 初期表示位置の決定
-- ウィンドウフレームの保存・復元
-- 画面外フレームの補正
-- `NSApp.activate` 実行
-- `AppCoordinator` へのウィンドウ表示・非表示通知
-
-## 10.6 AppCoordinator
-
-- 設定画面の表示状態管理
-- ウィンドウ表示・非表示イベントの改訂番号管理
-- `WindowManager` と `ContentView` 間の型付き連携
-
-## 10.7 FolderTabManager
-
-- タブ配列と選択中タブIDの管理
-- タブと選択状態の永続化
-- 旧フォルダ設定から先頭タブへの移行
-
-## 10.8 SettingsViewModel
-
-- 設定画面の下書き状態管理
-- タブ追加・削除・フォルダ選択
-- 言語、画像拡大設定、ショートカットの検証・保存
-- 保存成功時だけ実設定へ反映
-
-## 10.9 FolderManager
-
-- フォルダ選択処理
-
-## 10.10 ImageFileLoader
-
-- 対象フォルダ内のファイル列挙
-- 対応拡張子によるフィルタリング
-- ファイル追加日時の取得
-- 更新日時の取得
-- ファイル追加日時、ファイル変更日時、ファイル名によるソート
-- `ImageFile` 配列の生成
-- アクセス不可時のエラー返却
-
-## 10.11 ThumbnailProvider
-
-- `QLThumbnailGenerator` によるサムネイル生成
-- 非同期処理
-- URL をキーにしたメモリキャッシュ
-- 生成失敗時の `nil` 返却
-
-## 10.12 ImageGridView / ImageFileTile
-
-- `LazyVGrid` によるタイル表示
-- グリッド列数の反映
-- サムネイル読み込み状態の表示
-- 選択状態のハイライト
-- ダブルクリックとドラッグ操作の AppKit ブリッジ連携
-
-## 10.13 FileDragInteractionView
-
-- AppKit のマウスイベントを使ったクリック、ダブルクリック、ドラッグ判定
-- `NSDraggingSession` の開始
-- 外部アプリへファイル URL を渡す
-- 右クリック対象または選択中のファイル群をゴミ箱へ移動
-
-## 10.14 HotKeyManager
-
-- Carbon `RegisterEventHotKey` によるグローバルショートカット登録
-- Carbon `UnregisterEventHotKey` による登録解除
-- ショートカット押下時のコールバック実行
-- 登録失敗時の既存ショートカット復元
-
-## 10.15 QuickLookManager
-
-- `QLPreviewPanel` の制御
-- 選択中ファイル1件の Quick Look 表示
-- Quick Look 表示中の対象ファイル更新
-
-## 10.16 KeyboardEventBridge
-
-- AppKit ローカルイベントモニタの導入
-- Enter / Escape / Space / Delete / Forward Delete / 矢印キーの検出
-- SwiftUI へのキーイベント通知
-- dismantle 時のイベントモニタ解除
-
-## 10.17 WindowAccessor
-
-- SwiftUI から `NSWindow` を取得するための `NSViewRepresentable`
-- 取得したウィンドウを `WindowManager` に渡す
-
-# 11. エラー処理
-
-## 11.1 フォルダ未設定
-
-フォルダ未登録の場合はフォルダ追加を、選択中フォルダの対象未設定の場合は設定画面でのフォルダ選択を促す状態メッセージを表示する。
-
-## 11.2 フォルダにアクセスできない
-
-保存済みフォルダにアクセスできない場合は、画像一覧を空にし、再選択を促す。
-
-## 11.3 対応ファイルがない
-
-対象フォルダに対応ファイルがない場合は、その旨と対応拡張子を表示する。
-
-## 11.4 サムネイル生成失敗
-
-サムネイル生成に失敗した場合は、タイル内に失敗アイコンを表示する。アプリ全体は停止させない。
-
-## 11.5 グローバルショートカット登録失敗
-
-ショートカット設定画面で登録失敗を表示する。既存ショートカットがある場合は復元する。
-
-# 12. パフォーマンス要件
-
-- 対応ファイル数が数百件程度でも UI が固まらないこと
-- サムネイル生成は非同期で行うこと
-- 一覧表示には `LazyVGrid` を使い、必要な範囲だけ描画すること
-- サムネイル生成済み画像はメモリキャッシュすること
-- 表示時の再読み込みで UI 全体を長時間ブロックしないこと
-
-数千枚規模の大量画像フォルダへの最適化は現時点では必須ではない。
-
-# 13. 権限・セキュリティ
-
-現時点ではローカル個人利用を想定し、App Sandbox は無効で実装する。
-
-この前提により、ユーザーが選択したフォルダパスを `UserDefaults` に保存し、次回起動時に同じパスを読み込む。
-
-App Sandbox を有効にする場合は、ユーザーが選択したフォルダへの継続アクセスのために Security-Scoped Bookmark を追加する必要がある。
-
-# 14. 受け入れ条件
-
-- アプリを起動できる
-- 設定画面でフォルダを追加・削除できる
-- 設定画面でフォルダをドラッグしてメイン画面の表示順を変更できる
-- 各フォルダの名称と対象パスを設定できる
-- メイン画面の見出しなし縦フォルダ一覧から表示フォルダを切り替えられる
-- タブ、フォルダパス、選択中タブが保存される
-- 次回起動時に保存済みタブと選択中フォルダを復元できる
-- 旧 `selectedFolderPath` 設定を先頭タブへ移行できる
-- 設定画面から選択中フォルダを手動再読み込みできる
-- 既定ではファイル追加日時の新しい順で一覧表示される
-- Sort メニューでファイル追加日時、ファイル変更日時、ファイル名の順に切り替えられる
-- 画像・PDFファイルがサムネイル表示される
-- サムネイル生成中や失敗時にアプリが落ちない
-- 画像をクリックして選択できる
-- Command クリックで選択状態をトグルできる
-- Shift クリックで範囲選択できる
-- Shift + 矢印キーで選択範囲を拡張・縮小できる
-- 画像をダブルクリックすると既定アプリで開く
-- ファイル選択中に Enter キーを押すと既定アプリで開く
-- 画像または PDF 選択中に Space キーで Quick Look プレビューできる
-- Quick Look 表示中に選択を変えるとプレビュー対象が更新される
-- 画像・PDFタイルを Slack や Finder などへドラッグするとファイルとして渡せる
-- 複数選択状態で選択済みタイルをドラッグすると複数ファイルを渡せる
-- タイルを右クリックするとコンテキストメニューを表示できる
-- Command + C で選択中ファイルをクリップボードへコピーできる
-- コンテキストメニューから選択中ファイルのパスをコピーできる
-- コンテキストメニューから選択中ファイルを Finder に表示できる
-- Delete または Forward Delete キーで選択中の全ファイルをまとめてゴミ箱へ移動できる
-- 選択済みタイルのコンテキストメニューから選択中の全ファイルをまとめてゴミ箱へ移動できる
-- 未選択タイルのコンテキストメニューから右クリック対象ファイル1件をゴミ箱へ移動できる
-- ゴミ箱への移動後に次または直前のファイルを選択し、Quick Lookを更新できる
-- ゴミ箱への移動に失敗した場合、一覧と選択を維持して警告を表示できる
-- 設定済みグローバルショートカットでアプリ画面を表示・非表示できる
-- 設定画面でショートカットを変更・保存できる
-- OSの優先言語に応じて英語または日本語で表示できる
-- 設定画面でSystem Default・English・Japaneseを切り替えて保存できる
-- アプリ画面が通常ウィンドウより前面に表示される
-- Escape キーでアプリ画面を隠せる
-- 保存済みフォルダにアクセスできない場合、再選択を促せる
-- ショートカットで非表示 → 再表示しても、ウィンドウ位置とサイズが維持される
-- 保存済みウィンドウ位置が画面外になる場合、表示可能領域内に補正される
-- 共通ビルドコマンドの成果物が `.build/DerivedData/Build/Products/Debug/FloatPeek.app` に生成される
-- `SWIFT_STRICT_CONCURRENCY=complete` でビルドとテストが成功する
-
-# 15. 実装方針
-
-- SwiftUI + AppKit 併用で macOS アプリを実装する
-- Finder 代替アプリではなく、画像フォルダを素早く確認する専用ビューアとして実装する
-- ファイル変更機能はゴミ箱への移動だけを実装し、完全削除、リネーム、通常の移動は実装しない
-- サムネイル生成には `QLThumbnailGenerator` を使う
-- ファイルを開く処理には `NSWorkspace.shared.open()` を使う
-- Quick Look は `QLPreviewPanel` を使う
-- ウィンドウ最前面表示には `NSWindow.Level.floating` を使う
-- グローバルショートカットは Carbon `RegisterEventHotKey` を使う
-- 依存ライブラリは原則追加しない
-- エラー時にアプリが落ちないようにする
-- 主要な処理はコンポーネントごとに分離する
-- モデルに `NSImage` を持たせず、サムネイルは `ThumbnailProvider` で管理する
-- ビルド確認時は共通 `DerivedData` パスを使う
-
-# 16. 将来追加候補
+確認項目:
+
+- `Release` workflow が成功
+- GitHub Release に ZIP と checksum が存在
+- Homebrew Tap の Cask が更新
+- `brew install --cask 2zk/tap/floatpeek` が成功
+
+公開済みタグや ZIP は上書きせず、新しいバージョンを発行する。
+
+# 13. 受け入れ条件
+
+## 13.1 フォルダと表示
+
+- フォルダを追加、削除、名称変更、並び替えできる
+- 選択中フォルダと表示順を再起動後に復元できる
+- 旧 `selectedFolderPath` を現行形式へ移行できる
+- 直下の対応ファイルだけを表示できる
+- 表示対象拡張子を選択・保存でき、未保存時は全選択になる
+- 拡張子変更が一覧と監視へ反映される
+- 3種類のソートが仕様どおり動作する
+
+## 13.2 選択とファイル操作
+
+- マウスとキーボードで単一・複数・範囲選択できる
+- ソート、再読込、ファイル削除後も選択状態が整合する
+- 既定アプリ、Quick Look、コピー、パスコピー、Finder 表示が動作する
+- 単一・複数ファイルを外部アプリへドラッグできる
+- 対象ファイルをゴミ箱へ移動できる
+- ゴミ箱移動失敗時に一覧と選択を維持できる
+
+## 13.3 ウィンドウと設定
+
+- グローバルショートカットで表示・非表示を切り替えられる
+- ショートカットを変更・保存できる
+- 登録失敗時に旧ショートカットと他設定を維持できる
+- ウィンドウ位置・サイズを保存し、画面内へ補正して復元できる
+- 英語・日本語を切り替え、再起動後に復元できる
+- 設定の `Cancel` で下書きを破棄できる
+
+## 13.4 品質
+
+- フォルダ変更を監視して自動再読み込みできる
+- 非対応・隠し・サブフォルダ内の変更を無視できる
+- サムネイル失敗やアクセスエラーでアプリが終了しない
+- 古い非同期読込結果が新しいフォルダへ混入しない
+- `SWIFT_STRICT_CONCURRENCY=complete` でビルド・テストが成功する
+- Debug 成果物が共通 DerivedData パスへ生成される
+
+# 14. 将来候補
 
 - サブフォルダ対応
-- サムネイルサイズ変更 UI
 - ファイル名検索
-- リネーム
+- サムネイルサイズ調整 UI
+- ファイル名変更、通常移動
 - メニューバー常駐
 - ログイン時自動起動
-- Security-Scoped Bookmark 対応
-- App Sandbox 対応
-- App Store 配布対応
+- Security-Scoped Bookmark
+- App Sandbox
+- Developer ID 署名と標準リリースの公証
+- App Store 配布

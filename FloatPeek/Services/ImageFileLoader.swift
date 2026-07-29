@@ -5,19 +5,17 @@ enum ImageFileLoaderError: Error, Equatable {
 }
 
 struct ImageFileLoader: @unchecked Sendable {
-    static let supportedExtensions: Set<String> = [
-        "jpg",
-        "jpeg",
-        "png",
-        "gif",
-        "heic",
-        "pdf"
-    ]
+    static let supportedExtensions = AppSettings.allSupportedFileExtensions
 
     private let fileManager: FileManager
+    var displayedFileExtensions: Set<String>
 
-    init(fileManager: FileManager = .default) {
+    init(
+        fileManager: FileManager = .default,
+        displayedFileExtensions: Set<String> = AppSettings.loadDisplayedFileExtensions()
+    ) {
         self.fileManager = fileManager
+        self.displayedFileExtensions = displayedFileExtensions
     }
 
     func loadImages(
@@ -46,7 +44,7 @@ struct ImageFileLoader: @unchecked Sendable {
         for fileURL in fileURLs {
             try Task.checkCancellation()
 
-            guard Self.supportedExtensions.contains(fileURL.pathExtension.lowercased()) else {
+            guard displayedFileExtensions.contains(fileURL.pathExtension.lowercased()) else {
                 continue
             }
 

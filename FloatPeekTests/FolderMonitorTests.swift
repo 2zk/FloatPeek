@@ -103,6 +103,21 @@ final class FolderMonitorTests: XCTestCase {
         await fulfillment(of: [changeExpectation], timeout: 0.8)
     }
 
+    func testDeselectedFileExtensionChangeIsIgnored() async throws {
+        let changeExpectation = expectation(description: "選択されていない拡張子の変更通知なし")
+        changeExpectation.isInverted = true
+        await startMonitoring(
+            folderURL: temporaryDirectory,
+            displayedFileExtensions: ["png"]
+        ) {
+            changeExpectation.fulfill()
+        }
+
+        try createFile(named: "image.jpg")
+
+        await fulfillment(of: [changeExpectation], timeout: 0.8)
+    }
+
     func testStopMonitoringSuppressesChanges() async throws {
         let changeExpectation = expectation(description: "監視停止後の変更通知なし")
         changeExpectation.isInverted = true
@@ -163,10 +178,12 @@ final class FolderMonitorTests: XCTestCase {
 
     private func startMonitoring(
         folderURL: URL,
+        displayedFileExtensions: Set<String> = ImageFileLoader.supportedExtensions,
         onChange: @escaping @Sendable () -> Void
     ) async {
         let didStartMonitoring = await monitor.startMonitoring(
             folderURL: folderURL,
+            displayedFileExtensions: displayedFileExtensions,
             onChange: onChange
         )
         XCTAssertTrue(didStartMonitoring)
@@ -211,6 +228,7 @@ private final class TestFolderMonitor: FolderMonitoring, @unchecked Sendable {
 
     func startMonitoring(
         folderURL: URL,
+        displayedFileExtensions: Set<String>,
         onChange: @escaping @Sendable () -> Void
     ) async -> Bool {
         self.onChange = onChange

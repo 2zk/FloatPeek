@@ -6,6 +6,7 @@ protocol FolderMonitoring: AnyObject, Sendable {
     @discardableResult
     func startMonitoring(
         folderURL: URL,
+        displayedFileExtensions: Set<String>,
         onChange: @escaping @Sendable () -> Void
     ) async -> Bool
     func stopMonitoring() async
@@ -36,6 +37,7 @@ final class FolderMonitor: FolderMonitoring, @unchecked Sendable {
     private var rootEventSource: DispatchSourceFileSystemObject?
     private var monitoredFolderPath: String?
     private var monitoredFiles: Set<URL> = []
+    private var displayedFileExtensions: Set<String> = []
     private var changeHandler: (@Sendable () -> Void)?
     private var pendingChange: DispatchWorkItem?
 
@@ -61,6 +63,7 @@ final class FolderMonitor: FolderMonitoring, @unchecked Sendable {
     @discardableResult
     func startMonitoring(
         folderURL: URL,
+        displayedFileExtensions: Set<String>,
         onChange: @escaping @Sendable () -> Void
     ) async -> Bool {
         await withCheckedContinuation { continuation in
@@ -68,6 +71,7 @@ final class FolderMonitor: FolderMonitoring, @unchecked Sendable {
                 continuation.resume(
                     returning: startMonitoringOnQueue(
                         folderURL: folderURL,
+                        displayedFileExtensions: displayedFileExtensions,
                         onChange: onChange
                     )
                 )
@@ -86,6 +90,7 @@ final class FolderMonitor: FolderMonitoring, @unchecked Sendable {
 
     private func startMonitoringOnQueue(
         folderURL: URL,
+        displayedFileExtensions: Set<String>,
         onChange: @escaping @Sendable () -> Void
     ) -> Bool {
         stopMonitoringOnQueue()
@@ -101,6 +106,7 @@ final class FolderMonitor: FolderMonitoring, @unchecked Sendable {
 
         monitoredFolderPath = standardizedFolderURL.path
         monitoredFiles = []
+        self.displayedFileExtensions = displayedFileExtensions
         changeHandler = onChange
 
         var context = FSEventStreamContext(
@@ -250,7 +256,7 @@ final class FolderMonitor: FolderMonitoring, @unchecked Sendable {
         }
 
         return Set(fileURLs.compactMap { fileURL in
-            guard ImageFileLoader.supportedExtensions.contains(
+            guard displayedFileExtensions.contains(
                 fileURL.pathExtension.lowercased()
             ), !fileURL.hasDirectoryPath else {
                 return nil
@@ -281,7 +287,7 @@ final class FolderMonitor: FolderMonitoring, @unchecked Sendable {
             return false
         }
 
-        return ImageFileLoader.supportedExtensions.contains(
+        return displayedFileExtensions.contains(
             eventURL.pathExtension.lowercased()
         )
     }
@@ -291,6 +297,7 @@ final class FolderMonitor: FolderMonitoring, @unchecked Sendable {
         pendingChange = nil
         monitoredFolderPath = nil
         monitoredFiles = []
+        displayedFileExtensions = []
         changeHandler = nil
     }
 }

@@ -249,6 +249,7 @@ struct ContentView: View {
             shortcut: HotKeyManager.shared.currentShortcut(),
             language: localization.language,
             scaleImagesWithWindow: scaleImagesWithWindow,
+            displayedFileExtensions: AppSettings.loadDisplayedFileExtensions(),
             tabs: tabManager.tabs,
             selectedTabID: tabManager.selectedTabID,
             localization: localization,
@@ -258,6 +259,9 @@ struct ContentView: View {
             onToggleWindow: WindowManager.shared.toggleWindow,
             onScaleImagesWithWindowChange: { isEnabled in
                 scaleImagesWithWindow = isEnabled
+            },
+            onDisplayedFileExtensionsChange: { displayedFileExtensions in
+                viewModel.setDisplayedFileExtensions(displayedFileExtensions)
             }
         )
     }
