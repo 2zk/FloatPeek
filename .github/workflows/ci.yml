@@ -21,6 +21,9 @@ jobs:
       - name: ソースコードを取得
         uses: actions/checkout@v6
 
+      - name: ShellCheckをインストール
+        run: brew install shellcheck
+
       - name: シェルスクリプトを検証
         run: |
           shellcheck -x Scripts/*.sh

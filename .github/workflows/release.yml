@@ -20,6 +20,9 @@ jobs:
       - name: ソースコードを取得
         uses: actions/checkout@v6
 
+      - name: ShellCheckをインストール
+        run: brew install shellcheck
+
       - name: タグとシークレットを検証
         env:
           HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
