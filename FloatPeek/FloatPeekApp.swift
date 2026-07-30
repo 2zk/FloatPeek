@@ -7,6 +7,7 @@ struct FloatPeekApp: App {
     @StateObject private var localization = LocalizationManager.shared
     @StateObject private var tabManager = FolderTabManager()
     @StateObject private var appCoordinator = AppCoordinator.shared
+    @StateObject private var updateManager = UpdateManager()
 
     var body: some Scene {
         Window("FloatPeek", id: "main") {
@@ -20,6 +21,13 @@ struct FloatPeekApp: App {
         .defaultSize(width: 160, height: 600)
         .commands {
             CommandGroup(replacing: .newItem) {}
+
+            CommandGroup(after: .appInfo) {
+                Button(localization.localized("Check for Updates…")) {
+                    updateManager.checkForUpdates()
+                }
+                .disabled(!updateManager.canCheckForUpdates)
+            }
 
             CommandGroup(replacing: .appSettings) {
                 Button(localization.localized("Settings…")) {

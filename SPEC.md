@@ -721,13 +721,18 @@ Sandbox を有効化する場合は Security-Scoped Bookmark の設計と移行�
 
 ## 10.3 配布署名
 
-標準の配布ワークフローは ad-hoc 署名を使用し、Apple 公証を行わない。配布者の身元を証明する署名ではないため、初回起動時に macOS の許可操作が必要になる。
+Apple Developer Programには加入せず、v2.0.0以降の標準配布はXcodeのad-hoc署名を使用してApple公証を行わない。配布者の身元を証明する署名ではないため、初回起動時にmacOSの許可操作が必要になる。
+
+Hardened Runtimeは有効に保つ。ad-hoc署名ではアプリ本体とSparkle frameworkに共通のTeam IDを付与できないため、Release構成には`com.apple.security.cs.disable-library-validation` entitlementを付与し、Sparkleの動的読み込みを許可する。
+
+Sparkleの更新ZIP、appcast、リリースノートにはEdDSA署名を付け、展開・表示前に検証する。更新の真正性はSparkle EdDSAで担保し、秘密鍵はリポジトリへ保存せず安全にバックアップする。Developer IDによる鍵変更の代替経路がないため、EdDSA秘密鍵は原則として変更しない。
 
 # 11. 開発・ビルド・テスト
 
 ## 11.1 必要環境
 
 - macOS
+- Apple Silicon
 - Xcode 本体
 - Xcode Command Line Tools
 
@@ -784,10 +789,13 @@ env DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
 | `QuickLookManagerTests` | 表示終了条件 |
 | `ThumbnailProviderTests` | aspect fit |
 | `SettingsViewModelTests` | 下書き、保存、失敗時非反映、拡張子設定 |
+| `UpdateManagerTests` | 更新確認の可否、手動確認の呼び出し |
 
 テスト環境では `InMemoryPreferences` を使用し、ユーザーの設定を変更しない。
 
 # 12. リリースと配布
+
+FloatPeekはApple Developer Programへ加入せずに開発・配布する。リリース工程はDeveloper ID証明書、Apple ID、Team ID、App用パスワードを要求せず、Apple公証も行わない。
 
 ## 12.1 リリース成果物
 
@@ -796,36 +804,35 @@ env DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
 ```text
 dist/FloatPeek-X.Y.Z.zip
 dist/FloatPeek-X.Y.Z.zip.sha256
+dist/FloatPeek-X.Y.Z.md
+dist/appcast.xml
 ```
 
-アプリ本体は Apple Silicon と Intel の Universal Binary とする。
+v2.0.0以降のアプリ本体はarm64専用とする。Intel Mac向け最終版はv1.3.0とし、以後は更新対象外とする。
 
 ## 12.2 ローカルリリースビルド
 
 ```sh
-./Scripts/build-release.sh 1.0.0
+./Scripts/build-release.sh 2.0.0
 ```
 
 スクリプトの処理:
 
 1. `X.Y.Z` 形式の検証
-2. 一時 DerivedData への Release ビルド
-3. `arm64` / `x86_64` の生成確認
-4. 署名
-5. Bundle version の確認
-6. 必要な場合は公証と stapling
-7. ZIP と SHA-256 の生成
+2. `xcodebuild archive`によるarm64・ad-hoc署名のReleaseアーカイブ生成
+3. Bundle version、arm64専用バイナリ、Sparkle内包、ad-hoc署名の確認
+4. アプリへ埋め込んだSparkle EdDSA公開鍵の確認
+5. ZIPとSHA-256の生成
 
 既存の同名 ZIP または checksum は上書きしない。
 
-既定の署名は `SIGNING_IDENTITY=-` による ad-hoc 署名。公証する場合は次のすべてを指定する。
+リリース作成にはSparkle EdDSA公開鍵を指定する。
 
-```text
-SIGNING_IDENTITY
-APPLE_ID
-APPLE_TEAM_ID
-APPLE_APP_SPECIFIC_PASSWORD
+```sh
+SPARKLE_PUBLIC_ED_KEY="<公開鍵>" ./Scripts/build-release.sh 2.0.0
 ```
+
+続いて`SPARKLE_ED_PRIVATE_KEY`を標準入力経由でSparkleの`generate_appcast`へ渡し、`Scripts/generate-appcast.sh`で署名済みappcastを生成する。
 
 ## 12.3 GitHub Actions
 
@@ -834,19 +841,22 @@ APPLE_APP_SPECIFIC_PASSWORD
 ワークフロー:
 
 1. タグ形式と Secret を検証
-2. ad-hoc 署名の Universal Binary を作成
-3. GitHub Release に ZIP と checksum を公開
-4. Homebrew Cask をテンプレートから生成
-5. `brew style --cask` で検証
-6. `2zk/homebrew-tap` の `Casks/floatpeek.rb` を更新
+2. arm64・ad-hoc署名のアプリとZIPを作成
+3. EdDSA署名済みappcastとリリースノートを生成
+4. GitHub Releaseをドラフトで作り、全アセット確認後に公開
+5. Homebrew Caskをテンプレートから生成・検証
+6. `2zk/homebrew-tap`の`Casks/floatpeek.rb`を更新
 
 必要な Repository Secret:
 
 | Secret | 用途 |
 | --- | --- |
 | `HOMEBREW_TAP_GITHUB_TOKEN` | `2zk/homebrew-tap` の Contents 読み書き |
+| `SPARKLE_ED_PRIVATE_KEY` | 更新署名用EdDSA秘密鍵 |
 
 token は fine-grained personal access token とし、対象リポジトリを `homebrew-tap` のみに限定する。
+
+Repository Variable `SPARKLE_PUBLIC_ED_KEY`には対応するEdDSA公開鍵を登録する。
 
 ワークフロー自身は FloatPeek の GitHub Release 作成に `contents: write` を使用する。
 
@@ -870,10 +880,12 @@ token は fine-grained personal access token とし、対象リポジトリを `
 Cask は次を定義する。
 
 - GitHub Release の ZIP
+- Apple Silicon必須
 - macOS Sonoma 以降
+- アプリ内自動更新
 - `FloatPeek.app`
 - アンインストール時に削除する preferences と saved state
-- ad-hoc 署名・未公証に関する caveat
+- ad-hoc署名・未公証に関するcaveat
 
 ## 12.5 リリース手順
 
@@ -883,14 +895,14 @@ Cask は次を定義する。
 4. タグを push する。
 
 ```sh
-git tag v1.0.0
-git push origin v1.0.0
+git tag v2.0.0
+git push origin v2.0.0
 ```
 
 確認項目:
 
 - `Release` workflow が成功
-- GitHub Release に ZIP と checksum が存在
+- GitHub Release に ZIP、checksum、appcast、リリースノートが存在
 - Homebrew Tap の Cask が更新
 - `brew install --cask 2zk/tap/floatpeek` が成功
 
@@ -935,6 +947,15 @@ git push origin v1.0.0
 - `SWIFT_STRICT_CONCURRENCY=complete` でビルド・テストが成功する
 - Debug 成果物が共通 DerivedData パスへ生成される
 
+## 13.5 自動アップデート
+
+- 24時間ごとに更新を自動確認できる
+- アプリメニューから手動確認できる
+- 利用者が承認した場合だけ更新をインストールして再起動する
+- 改ざんされたZIP、appcast、リリースノートを拒否できる
+- オフラインや更新確認失敗時も通常機能を継続利用できる
+- v2.0.0から、より大きいbuild numberを持つarm64版へ更新できる
+
 # 14. 将来候補
 
 - サブフォルダ対応
@@ -945,5 +966,6 @@ git push origin v1.0.0
 - ログイン時自動起動
 - Security-Scoped Bookmark
 - App Sandbox
-- Developer ID 署名と標準リリースの公証
+- Developer ID署名とApple公証
+- Sparkle差分更新
 - App Store 配布

@@ -47,6 +47,9 @@
 		E10000032C39000100A00001 /* ImageSelectionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E10000042C39000100A00001 /* ImageSelectionTests.swift */; };
 		F10000012C39000100A00001 /* AppCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000022C39000100A00001 /* AppCoordinator.swift */; };
 		F10000032C39000100A00001 /* AppCoordinatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000042C39000100A00001 /* AppCoordinatorTests.swift */; };
+		F20000012C39000100A00001 /* UpdateManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000022C39000100A00001 /* UpdateManager.swift */; };
+		F20000032C39000100A00001 /* UpdateManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000042C39000100A00001 /* UpdateManagerTests.swift */; };
+		F20000052C39000100A00001 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = F20000072C39000100A00001 /* Sparkle */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -103,6 +106,10 @@
 		E10000042C39000100A00001 /* ImageSelectionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageSelectionTests.swift; sourceTree = "<group>"; };
 		F10000022C39000100A00001 /* AppCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppCoordinator.swift; sourceTree = "<group>"; };
 		F10000042C39000100A00001 /* AppCoordinatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppCoordinatorTests.swift; sourceTree = "<group>"; };
+		F20000022C39000100A00001 /* UpdateManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateManager.swift; sourceTree = "<group>"; };
+		F20000042C39000100A00001 /* UpdateManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateManagerTests.swift; sourceTree = "<group>"; };
+		F20000082C39000100A00001 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		F20000092C39000100A00001 /* FloatPeek.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = FloatPeek.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -110,6 +117,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F20000052C39000100A00001 /* Sparkle in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -146,6 +154,8 @@
 			children = (
 				95B574602C39000100A00001 /* FloatPeekApp.swift */,
 				95B574612C39000100A00001 /* ContentView.swift */,
+				F20000082C39000100A00001 /* Info.plist */,
+				F20000092C39000100A00001 /* FloatPeek.entitlements */,
 				B10000062C39000100A00001 /* Localizable.strings */,
 				95B574A42C39000100A00001 /* Assets.xcassets */,
 				95B574762C39000100A00001 /* Models */,
@@ -182,6 +192,7 @@
 				95B574902C39000100A00001 /* QuickLookManager.swift */,
 				95B574942C39000100A00001 /* WindowManager.swift */,
 				95B574952C39000100A00001 /* HotKeyManager.swift */,
+				F20000022C39000100A00001 /* UpdateManager.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -223,6 +234,7 @@
 				D10000042C39000100A00001 /* SettingsViewModelTests.swift */,
 				E10000042C39000100A00001 /* ImageSelectionTests.swift */,
 				F10000042C39000100A00001 /* AppCoordinatorTests.swift */,
+				F20000042C39000100A00001 /* UpdateManagerTests.swift */,
 			);
 			path = FloatPeekTests;
 			sourceTree = "<group>";
@@ -243,6 +255,9 @@
 			dependencies = (
 			);
 			name = FloatPeek;
+			packageProductDependencies = (
+				F20000072C39000100A00001 /* Sparkle */,
+			);
 			productName = FloatPeek;
 			productReference = 95B574582C39000100A00001 /* FloatPeek.app */;
 			productType = "com.apple.product-type.application";
@@ -294,6 +309,9 @@
 				Base,
 			);
 			mainGroup = 95B5744F2C39000100A00001;
+			packageReferences = (
+				F20000062C39000100A00001 /* XCRemoteSwiftPackageReference "Sparkle" */,
+			);
 			productRefGroup = 95B574562C39000100A00001 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -357,6 +375,7 @@
 				95B574972C39000100A00001 /* ShortcutSettingsView.swift in Sources */,
 				95B574982C39000100A00001 /* ShortcutRecorderView.swift in Sources */,
 				95B5749B2C39000100A00001 /* FileDragInteractionView.swift in Sources */,
+				F20000012C39000100A00001 /* UpdateManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -373,6 +392,7 @@
 				D10000032C39000100A00001 /* SettingsViewModelTests.swift in Sources */,
 				E10000032C39000100A00001 /* ImageSelectionTests.swift in Sources */,
 				F10000032C39000100A00001 /* AppCoordinatorTests.swift in Sources */,
+				F20000032C39000100A00001 /* UpdateManagerTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -519,55 +539,57 @@
 		95B574842C39000100A00001 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ARCHS = arm64;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = FloatPeek;
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
-				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = FloatPeek/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 2.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.floatpeek.FloatPeek;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_VERSION = 5.0;
+				SPARKLE_PUBLIC_ED_KEY = "";
 			};
 			name = Debug;
 		};
 		95B574852C39000100A00001 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ARCHS = arm64;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = FloatPeek/FloatPeek.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_HARDENED_RUNTIME = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = FloatPeek;
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
-				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = FloatPeek/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 2.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.floatpeek.FloatPeek;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_VERSION = 5.0;
+				SPARKLE_PUBLIC_ED_KEY = "";
 			};
 			name = Release;
 		};
 		95B574872C39000100A00001 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ARCHS = arm64;
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -587,6 +609,7 @@
 		95B574882C39000100A00001 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ARCHS = arm64;
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -604,6 +627,25 @@
 			name = Release;
 		};
 /* End XCBuildConfiguration section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		F20000062C39000100A00001 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sparkle-project/Sparkle";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.9.4;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		F20000072C39000100A00001 /* Sparkle */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F20000062C39000100A00001 /* XCRemoteSwiftPackageReference "Sparkle" */;
+			productName = Sparkle;
+		};
+/* End XCSwiftPackageProductDependency section */
 
 /* Begin XCConfigurationList section */
 		95B574512C39000100A00001 /* Build configuration list for PBXProject "FloatPeek" */ = {

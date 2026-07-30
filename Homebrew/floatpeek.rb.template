@@ -8,6 +8,9 @@ cask "floatpeek" do
   desc "Image and PDF browser opened with a global keyboard shortcut"
   homepage "https://github.com/2zk/FloatPeek"
 
+  auto_updates true
+
+  depends_on arch: :arm64
   depends_on macos: :sonoma
 
   app "FloatPeek.app"

@@ -24,13 +24,17 @@ FloatPeek は、よく使う画像フォルダを小さなフローティング�
 - フォルダ変更の監視と自動再読み込み
 - 日本語・英語表示
 - ウィンドウ位置とサイズの保存
+- 24時間ごとの自動アップデート確認と承認後のインストール
 
 ### 動作環境
 
+- Apple Silicon（M1以降）
 - macOS 14 Sonoma 以降
 - 対応形式: `jpg`、`jpeg`、`png`、`gif`、`heic`、`pdf`
 
 選択したフォルダ直下のファイルだけを表示します。隠しファイルとサブフォルダ内のファイルは表示しません。
+
+v2.0.0以降はIntel Macに対応しません。Intel Mac向けの最終版はv1.3.0です。
 
 ### インストール
 
@@ -47,17 +51,19 @@ brew upgrade --cask floatpeek
 brew uninstall --cask floatpeek
 ```
 
+v1.xからv2.0.0へ移行するときは、上記の`brew upgrade`またはGitHub Releaseからの再インストールが一度だけ必要です。v2.0.0以降は24時間ごとに更新を自動確認し、利用者が承認した場合だけインストールして再起動します。アプリメニューの`アップデートを確認…`から手動確認することもできます。
+
 ### 初回起動
 
-配布版は ad-hoc 署名されており、Apple の公証を受けていません。macOS に起動をブロックされた場合は、ソースと配布元を確認し、FloatPeek を信頼できる場合に限り次の操作を行ってください。
+配布版はad-hoc署名されており、Appleの公証を受けていません。macOSに起動をブロックされた場合は、ソースと配布元を確認し、FloatPeekを信頼できる場合に限り次の操作を行ってください。
 
-1. `FloatPeek.app` を一度開き、警告を閉じます。
-2. `システム設定` の `プライバシーとセキュリティ` を開きます。
-3. `セキュリティ` までスクロールします。
-4. FloatPeek の `このまま開く` をクリックします。
-5. 確認画面でもう一度 `開く` をクリックします。
+1. `FloatPeek.app`を一度開き、警告を閉じます。
+2. `システム設定`の`プライバシーとセキュリティ`を開きます。
+3. `セキュリティ`までスクロールします。
+4. FloatPeekの`このまま開く`をクリックします。
+5. 確認画面でもう一度`開く`をクリックします。
 
-一度許可すると、次回からは通常どおり起動できます。
+一度許可すると、次回からは通常どおり起動できます。v2.0.0以降の更新ZIPと更新情報はSparkle EdDSAで署名され、アプリがインストール前に検証します。
 
 ### はじめに
 
@@ -121,6 +127,7 @@ brew uninstall --cask floatpeek
 - サブフォルダ内のファイルは表示しません。
 - ファイル検索、名前変更、通常のフォルダへの移動、画像編集には対応していません。
 - App Sandbox と App Store 配布には対応していません。
+- Intel Macには対応していません。Intel Mac向けの最終版はv1.3.0です。
 - macOS のフルスクリーン、Mission Control、複数 Spaces で常に最前面になることは保証しません。
 
 ## English
@@ -143,13 +150,17 @@ FloatPeek is a macOS app for quickly browsing frequently used image folders in a
 - Monitor the visible folder and reload automatically
 - English and Japanese interfaces
 - Restore the saved window position and size
+- Check for updates every 24 hours and install only after approval
 
 ### Requirements
 
+- Apple Silicon (M1 or later)
 - macOS 14 Sonoma or later
 - Supported formats: `jpg`, `jpeg`, `png`, `gif`, `heic`, `pdf`
 
 FloatPeek displays files directly inside the selected folder. Hidden files and files in subfolders are not included.
+
+Version 2.0.0 and later do not support Intel Macs. Version 1.3.0 is the final Intel-compatible release.
 
 ### Installation
 
@@ -166,6 +177,8 @@ brew upgrade --cask floatpeek
 brew uninstall --cask floatpeek
 ```
 
+Moving from v1.x to v2.0.0 requires one manual `brew upgrade` or reinstall from GitHub Releases. Starting with v2.0.0, FloatPeek checks for updates every 24 hours and installs only after approval. You can also use `Check for Updates…` from the application menu.
+
 ### First launch
 
 The distributed app is ad-hoc signed and is not notarized by Apple. If macOS blocks the first launch, only override the warning after checking the source and distribution origin and deciding that you trust FloatPeek.
@@ -176,7 +189,7 @@ The distributed app is ad-hoc signed and is not notarized by Apple. If macOS blo
 4. Click `Open Anyway` for FloatPeek.
 5. Click `Open` in the confirmation dialog.
 
-Once allowed, the app opens normally on subsequent launches.
+Once allowed, the app opens normally on subsequent launches. Starting with v2.0.0, update archives and update metadata are signed with Sparkle EdDSA and verified before installation.
 
 ### Getting started
 
@@ -240,4 +253,5 @@ The context menu can open or preview files, copy files or paths, reveal files in
 - Files in subfolders are not displayed.
 - Search, rename, regular file moves, and image editing are not supported.
 - App Sandbox and App Store distribution are not supported.
+- Intel Macs are not supported. Version 1.3.0 is the final Intel-compatible release.
 - Always-on-top behavior is not guaranteed across macOS full-screen apps, Mission Control, or multiple Spaces.

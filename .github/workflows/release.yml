@@ -17,12 +17,15 @@ jobs:
     runs-on: macos-15
     env:
       HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
+      SPARKLE_PUBLIC_ED_KEY: ${{ vars.SPARKLE_PUBLIC_ED_KEY }}
 
     steps:
       - name: ソースコードを取得
         uses: actions/checkout@v6
 
       - name: タグとシークレットを検証
+        env:
+          SPARKLE_ED_PRIVATE_KEY: ${{ secrets.SPARKLE_ED_PRIVATE_KEY }}
         shell: bash
         run: |
           set -euo pipefail
@@ -33,20 +36,81 @@ jobs:
             exit 1
           fi
 
-          if [[ -z "$HOMEBREW_TAP_GITHUB_TOKEN" ]]; then
-            echo "GitHub Actions secret が未設定です: HOMEBREW_TAP_GITHUB_TOKEN" >&2
+          major_version="${version%%.*}"
+          if (( 10#$major_version < 2 )); then
+            echo "arm64 専用リリースは v2.0.0 以降に限定します: $GITHUB_REF_NAME" >&2
             exit 1
           fi
+
+          required_variables=(
+            HOMEBREW_TAP_GITHUB_TOKEN
+            SPARKLE_ED_PRIVATE_KEY
+            SPARKLE_PUBLIC_ED_KEY
+          )
+          for variable_name in "${required_variables[@]}"; do
+            if [[ -z "${!variable_name:-}" ]]; then
+              echo "GitHub Actions の Secret または Variable が未設定です: $variable_name" >&2
+              exit 1
+            fi
+          done
 
           echo "VERSION=$version" >> "$GITHUB_ENV"
 
       - name: ad-hoc 署名のリリースを作成
         env:
           BUILD_NUMBER: ${{ github.run_number }}
-          SIGNING_IDENTITY: "-"
         run: ./Scripts/build-release.sh "$VERSION"
 
-      - name: GitHub Release を公開
+      - name: リリースノートを生成
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          gh api \
+            --method POST \
+            "repos/$GITHUB_REPOSITORY/releases/generate-notes" \
+            -f tag_name="$GITHUB_REF_NAME" \
+            --jq .body \
+            > "dist/FloatPeek-$VERSION.md"
+
+      - name: Sparkle 更新フィードを生成・検証
+        env:
+          BUILD_NUMBER: ${{ github.run_number }}
+          SPARKLE_ED_PRIVATE_KEY: ${{ secrets.SPARKLE_ED_PRIVATE_KEY }}
+        run: |
+          ./Scripts/generate-appcast.sh \
+            "$VERSION" \
+            "$BUILD_NUMBER" \
+            "dist/FloatPeek-$VERSION.zip" \
+            "dist/FloatPeek-$VERSION.md"
+
+      - name: GitHub Release をドラフトで作成
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            if [[ "$(gh release view "$GITHUB_REF_NAME" --json isDraft --jq .isDraft)" != "true" ]]; then
+              echo "公開済み Release は上書きしません: $GITHUB_REF_NAME" >&2
+              exit 1
+            fi
+            gh release edit "$GITHUB_REF_NAME" \
+              --notes-file "dist/FloatPeek-$VERSION.md" \
+              --title "FloatPeek $VERSION"
+            exit 0
+          fi
+
+          gh release create "$GITHUB_REF_NAME" \
+            --draft \
+            --notes-file "dist/FloatPeek-$VERSION.md" \
+            --title "FloatPeek $VERSION" \
+            --verify-tag
+
+      - name: GitHub Release アセットをアップロード
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
@@ -55,16 +119,37 @@ jobs:
 
           archive="dist/FloatPeek-$VERSION.zip"
           checksum="$archive.sha256"
-          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
-            gh release upload "$GITHUB_REF_NAME" "$archive" "$checksum" --clobber
-          else
-            gh release create "$GITHUB_REF_NAME" \
-              "$archive" \
-              "$checksum" \
-              --generate-notes \
-              --title "FloatPeek $VERSION" \
-              --verify-tag
-          fi
+          release_notes="dist/FloatPeek-$VERSION.md"
+          appcast="dist/appcast.xml"
+
+          gh release upload \
+            "$GITHUB_REF_NAME" \
+            "$archive" \
+            "$checksum" \
+            "$release_notes" \
+            "$appcast" \
+            --clobber
+
+          expected_assets=(
+            "FloatPeek-$VERSION.zip"
+            "FloatPeek-$VERSION.zip.sha256"
+            "FloatPeek-$VERSION.md"
+            "appcast.xml"
+          )
+          for asset_name in "${expected_assets[@]}"; do
+            if ! gh release view "$GITHUB_REF_NAME" \
+              --json assets \
+              --jq '.assets[].name' |
+              grep -Fxq "$asset_name"; then
+              echo "Release アセットを確認できません: $asset_name" >&2
+              exit 1
+            fi
+          done
+
+      - name: GitHub Release を公開
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release edit "$GITHUB_REF_NAME" --draft=false
 
       - name: Homebrew Tap を取得
         uses: actions/checkout@v6
