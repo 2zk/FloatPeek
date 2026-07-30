@@ -9,7 +9,6 @@ cask "floatpeek" do
   homepage "https://github.com/2zk/FloatPeek"
 
   auto_updates true
-
   depends_on arch: :arm64
   depends_on macos: :sonoma
 
