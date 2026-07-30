@@ -82,13 +82,22 @@ printf '%s' "$SPARKLE_ED_PRIVATE_KEY" |
 
 if [[ -n "$release_notes_path" ]]; then
   ditto "$temporary_directory/FloatPeek-$version.md" "$release_notes_path"
-  if ! grep -Fq "sparkle-signatures:" "$release_notes_path"; then
-    echo "リリースノートにEdDSA署名がありません。" >&2
+  if ! grep -Fq "<!-- sparkle-sign-warning:" "$release_notes_path"; then
+    echo "リリースノートに署名済みファイルの警告がありません。" >&2
     exit 65
   fi
 fi
 
 xmllint --noout "$output_path"
+
+if [[ -n "$release_notes_path" ]]; then
+  release_notes_element="$(xmllint --xpath '//*[local-name()="releaseNotesLink"]' "$output_path")"
+  if ! grep -Fq "sparkle:edSignature=" <<<"$release_notes_element" ||
+    ! grep -Fq "sparkle:length=" <<<"$release_notes_element"; then
+    echo "appcast のリリースノートにEdDSA署名またはファイルサイズがありません。" >&2
+    exit 65
+  fi
+fi
 
 archive_size="$(stat -f '%z' "$archive_path")"
 required_appcast_values=(
