@@ -274,7 +274,7 @@ struct SettingsView: View {
                 Button {
                     viewModel.removeTab(id: tabID)
                 } label: {
-                    Image(systemName: "minus")
+                    Image(systemName: "xmark")
                 }
                 .help(localization.localized("Remove Tab"))
             }
