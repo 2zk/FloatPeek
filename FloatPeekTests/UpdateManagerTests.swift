@@ -38,6 +38,10 @@ final class UpdateManagerTests: XCTestCase {
             info?["SUFeedURL"] as? String,
             "https://github.com/2zk/FloatPeek/releases/latest/download/appcast.xml"
         )
+        XCTAssertEqual(
+            info?["SUPublicEDKey"] as? String,
+            "dmTOB/jzQBIFxfaVKLgl/NhxFUkGL0Bfaqo877brDbg="
+        )
         XCTAssertEqual(info?["SUEnableAutomaticChecks"] as? Bool, true)
         XCTAssertEqual(info?["SUScheduledCheckInterval"] as? Int, 86_400)
         XCTAssertEqual(info?["SUAutomaticallyUpdate"] as? Bool, false)

@@ -556,7 +556,7 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_VERSION = 5.0;
-				SPARKLE_PUBLIC_ED_KEY = "";
+				SPARKLE_PUBLIC_ED_KEY = "dmTOB/jzQBIFxfaVKLgl/NhxFUkGL0Bfaqo877brDbg=";
 			};
 			name = Debug;
 		};
@@ -582,7 +582,7 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_VERSION = 5.0;
-				SPARKLE_PUBLIC_ED_KEY = "";
+				SPARKLE_PUBLIC_ED_KEY = "dmTOB/jzQBIFxfaVKLgl/NhxFUkGL0Bfaqo877brDbg=";
 			};
 			name = Release;
 		};

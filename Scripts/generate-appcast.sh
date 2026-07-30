@@ -43,6 +43,8 @@ fi
 
 script_directory="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repository_root="$(cd "$script_directory/.." && pwd)"
+# shellcheck source=Scripts/lib/release-config.sh
+source "$script_directory/lib/release-config.sh"
 source_packages_path="${SOURCE_PACKAGES_PATH:-$repository_root/.build/SourcePackages}"
 generate_appcast_path="$source_packages_path/artifacts/sparkle/Sparkle/bin/generate_appcast"
 output_directory="$(cd "$(dirname "$archive_path")" && pwd)"
@@ -61,13 +63,13 @@ fi
 temporary_directory="$(mktemp -d "${TMPDIR:-/tmp}/floatpeek-appcast.XXXXXX")"
 trap 'rm -rf "$temporary_directory"' EXIT
 
-archive_name="FloatPeek-$version.zip"
+archive_name="$FLOATPEEK_APP_NAME-$version.zip"
 archive_copy_path="$temporary_directory/$archive_name"
-release_url_prefix="https://github.com/2zk/FloatPeek/releases/download/v$version/"
+release_url_prefix="https://github.com/$FLOATPEEK_REPOSITORY/releases/download/v$version/"
 
 ditto "$archive_path" "$archive_copy_path"
 if [[ -n "$release_notes_path" ]]; then
-  ditto "$release_notes_path" "$temporary_directory/FloatPeek-$version.md"
+  ditto "$release_notes_path" "$temporary_directory/$FLOATPEEK_APP_NAME-$version.md"
 fi
 
 printf '%s' "$SPARKLE_ED_PRIVATE_KEY" |
@@ -75,46 +77,24 @@ printf '%s' "$SPARKLE_ED_PRIVATE_KEY" |
     --ed-key-file - \
     --download-url-prefix "$release_url_prefix" \
     --release-notes-url-prefix "$release_url_prefix" \
-    --link "https://github.com/2zk/FloatPeek/releases/tag/v$version" \
+    --link "https://github.com/$FLOATPEEK_REPOSITORY/releases/tag/v$version" \
     --maximum-deltas 0 \
     -o "$output_path" \
     "$temporary_directory"
 
 if [[ -n "$release_notes_path" ]]; then
-  ditto "$temporary_directory/FloatPeek-$version.md" "$release_notes_path"
-  if ! grep -Fq "<!-- sparkle-sign-warning:" "$release_notes_path"; then
-    echo "リリースノートに署名済みファイルの警告がありません。" >&2
-    exit 65
-  fi
+  ditto "$temporary_directory/$FLOATPEEK_APP_NAME-$version.md" "$release_notes_path"
 fi
 
-xmllint --noout "$output_path"
-
-if [[ -n "$release_notes_path" ]]; then
-  release_notes_element="$(xmllint --xpath '//*[local-name()="releaseNotesLink"]' "$output_path")"
-  if ! grep -Fq "sparkle:edSignature=" <<<"$release_notes_element" ||
-    ! grep -Fq "sparkle:length=" <<<"$release_notes_element"; then
-    echo "appcast のリリースノートにEdDSA署名またはファイルサイズがありません。" >&2
-    exit 65
-  fi
-fi
-
-archive_size="$(stat -f '%z' "$archive_path")"
-required_appcast_values=(
-  "<sparkle:version>$build_number</sparkle:version>"
-  "<sparkle:shortVersionString>$version</sparkle:shortVersionString>"
-  "<sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>"
-  "<sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>"
-  "https://github.com/2zk/FloatPeek/releases/download/v$version/FloatPeek-$version.zip"
-  "length=\"$archive_size\""
-  "sparkle:edSignature="
-  "sparkle-signatures:"
+validation_arguments=(
+  "$version"
+  "$build_number"
+  "$archive_path"
+  "$output_path"
 )
-for required_value in "${required_appcast_values[@]}"; do
-  if ! grep -Fq "$required_value" "$output_path"; then
-    echo "appcast に必要な値がありません: $required_value" >&2
-    exit 65
-  fi
-done
+if [[ -n "$release_notes_path" ]]; then
+  validation_arguments+=("$release_notes_path")
+fi
+"$script_directory/validate-appcast.sh" "${validation_arguments[@]}"
 
 echo "更新フィード: $output_path"
