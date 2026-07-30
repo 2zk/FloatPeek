@@ -1,0 +1,4 @@
+interface:
+  display_name: "FloatPeek Release"
+  short_description: "FloatPeekを検証しGitHubとHomebrewへ安全にリリース"
+  default_prompt: "$floatpeek-release を使ってFloatPeekを検証し、GitHub ReleaseとHomebrewへ公開してください。"
