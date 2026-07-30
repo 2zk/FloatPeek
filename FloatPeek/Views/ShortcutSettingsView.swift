@@ -7,10 +7,12 @@ struct SettingsView: View {
     @EnvironmentObject private var localization: LocalizationManager
 
     @StateObject private var viewModel: SettingsViewModel
+    @ObservedObject private var updateManager: UpdateManager
     @State private var draggedTabID: FolderTab.ID?
 
-    init(viewModel: SettingsViewModel) {
+    init(viewModel: SettingsViewModel, updateManager: UpdateManager) {
         _viewModel = StateObject(wrappedValue: viewModel)
+        _updateManager = ObservedObject(wrappedValue: updateManager)
     }
 
     var body: some View {
@@ -28,6 +30,10 @@ struct SettingsView: View {
             Divider()
 
             shortcutSection
+
+            Divider()
+
+            updatesSection
             actionButtons
         }
         .padding(20)
@@ -163,6 +169,57 @@ struct SettingsView: View {
         }
     }
 
+    private var updatesSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(localization.localized("Updates"))
+                .font(.headline)
+
+            HStack {
+                Toggle(
+                    localization.localized("Automatically check for updates"),
+                    isOn: $viewModel.automaticallyChecksForUpdates
+                )
+                .toggleStyle(.checkbox)
+
+                Spacer()
+
+                Picker(
+                    localization.localized("Update Check Frequency"),
+                    selection: $viewModel.updateCheckFrequency
+                ) {
+                    ForEach(UpdateCheckFrequency.allCases) { frequency in
+                        Text(localization.localized(frequency.localizationKey)).tag(frequency)
+                    }
+                }
+                .labelsHidden()
+                .frame(width: 110)
+                .disabled(!viewModel.automaticallyChecksForUpdates)
+            }
+
+            Button(localization.localized("Check Now")) {
+                updateManager.checkForUpdates()
+            }
+            .disabled(!updateManager.canCheckForUpdates)
+
+            if let lastUpdateCheckDate = updateManager.lastUpdateCheckDate {
+                HStack(spacing: 4) {
+                    Text(localization.localized("Last checked"))
+                    Text(lastUpdateCheckDate, format: .dateTime.year().month().day().hour().minute())
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            } else {
+                Text(localization.localized("Not checked yet"))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Text(localization.localizedFormat("Version %@", appVersion))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+
     private var actionButtons: some View {
         HStack {
             Button(localization.localized("Restore Default")) {
@@ -276,6 +333,10 @@ struct SettingsView: View {
                 viewModel.quickLookBackgroundColor.blue = color.blueComponent
             }
         )
+    }
+
+    private var appVersion: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
     }
 
 }

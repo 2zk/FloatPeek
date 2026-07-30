@@ -124,6 +124,8 @@ final class SettingsViewModelTests: XCTestCase {
         context.viewModel.language = .japanese
         context.viewModel.scaleImagesWithWindow = false
         context.viewModel.displayedFileExtensions = ["png", "pdf"]
+        context.viewModel.automaticallyChecksForUpdates = false
+        context.viewModel.updateCheckFrequency = .monthly
         context.viewModel.quickLookBackgroundColor = QuickLookBackgroundColor(
             red: 0.1,
             green: 0.2,
@@ -152,6 +154,8 @@ final class SettingsViewModelTests: XCTestCase {
             context.quickLookBackgroundColorRecorder.values,
             [context.viewModel.quickLookBackgroundColor]
         )
+        XCTAssertEqual(context.automaticUpdateChecksRecorder.values, [false])
+        XCTAssertEqual(context.updateCheckFrequencyRecorder.values, [.monthly])
     }
 
     func testImageScalingDraftIsNotAppliedBeforeSave() {
@@ -159,6 +163,8 @@ final class SettingsViewModelTests: XCTestCase {
 
         context.viewModel.scaleImagesWithWindow = false
         context.viewModel.displayedFileExtensions = ["png"]
+        context.viewModel.automaticallyChecksForUpdates = false
+        context.viewModel.updateCheckFrequency = .daily
         context.viewModel.quickLookBackgroundColor = QuickLookBackgroundColor(
             red: 0.1,
             green: 0.2,
@@ -177,6 +183,8 @@ final class SettingsViewModelTests: XCTestCase {
         XCTAssertTrue(context.imageScalingRecorder.values.isEmpty)
         XCTAssertTrue(context.fileExtensionsRecorder.values.isEmpty)
         XCTAssertTrue(context.quickLookBackgroundColorRecorder.values.isEmpty)
+        XCTAssertTrue(context.automaticUpdateChecksRecorder.values.isEmpty)
+        XCTAssertTrue(context.updateCheckFrequencyRecorder.values.isEmpty)
     }
 
     func testRegistrationFailureDoesNotApplyDraft() {
@@ -221,6 +229,8 @@ final class SettingsViewModelTests: XCTestCase {
         let imageScalingRecorder = TestImageScalingRecorder()
         let fileExtensionsRecorder = TestFileExtensionsRecorder()
         let quickLookBackgroundColorRecorder = TestQuickLookBackgroundColorRecorder()
+        let automaticUpdateChecksRecorder = TestBooleanRecorder()
+        let updateCheckFrequencyRecorder = TestUpdateCheckFrequencyRecorder()
         preferences.set(AppLanguage.english.rawValue, forKey: AppSettings.languageKey)
         let localization = LocalizationManager(userDefaults: preferences)
         let tabManager = FolderTabManager(userDefaults: preferences)
@@ -245,7 +255,11 @@ final class SettingsViewModelTests: XCTestCase {
             onToggleWindow: {},
             onScaleImagesWithWindowChange: imageScalingRecorder.record,
             onDisplayedFileExtensionsChange: fileExtensionsRecorder.record,
-            onQuickLookBackgroundColorChange: quickLookBackgroundColorRecorder.record
+            onQuickLookBackgroundColorChange: quickLookBackgroundColorRecorder.record,
+            automaticallyChecksForUpdates: true,
+            onAutomaticallyChecksForUpdatesChange: automaticUpdateChecksRecorder.record,
+            updateCheckFrequency: .weekly,
+            onUpdateCheckFrequencyChange: updateCheckFrequencyRecorder.record
         )
         return TestContext(
             viewModel: viewModel,
@@ -256,7 +270,9 @@ final class SettingsViewModelTests: XCTestCase {
             preferences: preferences,
             imageScalingRecorder: imageScalingRecorder,
             fileExtensionsRecorder: fileExtensionsRecorder,
-            quickLookBackgroundColorRecorder: quickLookBackgroundColorRecorder
+            quickLookBackgroundColorRecorder: quickLookBackgroundColorRecorder,
+            automaticUpdateChecksRecorder: automaticUpdateChecksRecorder,
+            updateCheckFrequencyRecorder: updateCheckFrequencyRecorder
         )
     }
 }
@@ -272,6 +288,8 @@ private struct TestContext {
     let imageScalingRecorder: TestImageScalingRecorder
     let fileExtensionsRecorder: TestFileExtensionsRecorder
     let quickLookBackgroundColorRecorder: TestQuickLookBackgroundColorRecorder
+    let automaticUpdateChecksRecorder: TestBooleanRecorder
+    let updateCheckFrequencyRecorder: TestUpdateCheckFrequencyRecorder
 }
 
 @MainActor
@@ -298,6 +316,24 @@ private final class TestQuickLookBackgroundColorRecorder {
 
     func record(_ color: QuickLookBackgroundColor) {
         values.append(color)
+    }
+}
+
+@MainActor
+private final class TestBooleanRecorder {
+    private(set) var values: [Bool] = []
+
+    func record(_ value: Bool) {
+        values.append(value)
+    }
+}
+
+@MainActor
+private final class TestUpdateCheckFrequencyRecorder {
+    private(set) var values: [UpdateCheckFrequency] = []
+
+    func record(_ frequency: UpdateCheckFrequency) {
+        values.append(frequency)
     }
 }
 

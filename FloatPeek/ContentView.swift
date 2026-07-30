@@ -9,6 +9,7 @@ struct ContentView: View {
     @EnvironmentObject private var localization: LocalizationManager
     @EnvironmentObject private var tabManager: FolderTabManager
     @EnvironmentObject private var appCoordinator: AppCoordinator
+    @EnvironmentObject private var updateManager: UpdateManager
     @State private var gridColumnCount = 1
     @State private var scaleImagesWithWindow = AppSettings.loadScaleImagesWithWindow()
 
@@ -147,7 +148,10 @@ struct ContentView: View {
             syncSelectedTab()
         }
         .sheet(isPresented: $appCoordinator.isShowingSettings) {
-            SettingsView(viewModel: makeSettingsViewModel())
+            SettingsView(
+                viewModel: makeSettingsViewModel(),
+                updateManager: updateManager
+            )
         }
         .alert(
             localization.localized("Could not Move to Trash"),
@@ -266,6 +270,14 @@ struct ContentView: View {
             },
             onQuickLookBackgroundColorChange: { backgroundColor in
                 QuickLookManager.shared.applyBackgroundColor(backgroundColor)
+            },
+            automaticallyChecksForUpdates: updateManager.automaticallyChecksForUpdates,
+            onAutomaticallyChecksForUpdatesChange: { isEnabled in
+                updateManager.setAutomaticallyChecksForUpdates(isEnabled)
+            },
+            updateCheckFrequency: updateManager.updateCheckFrequency,
+            onUpdateCheckFrequencyChange: { frequency in
+                updateManager.setUpdateCheckFrequency(frequency)
             }
         )
     }

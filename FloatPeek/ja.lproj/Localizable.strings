@@ -1,5 +1,15 @@
 "Settings…" = "設定…";
 "Check for Updates…" = "アップデートを確認…";
+"Updates" = "アップデート";
+"Automatically check for updates" = "アップデートを自動的に確認";
+"Update Check Frequency" = "確認頻度";
+"Daily" = "毎日";
+"Weekly" = "毎週";
+"Monthly" = "毎月";
+"Check Now" = "今すぐ確認";
+"Last checked" = "最終確認:";
+"Not checked yet" = "まだ確認していません";
+"Version %@" = "バージョン %@";
 "Global shortcut unavailable" = "グローバルショートカットを使用できません";
 "%@ could not be registered. Choose another shortcut in Settings." = "%@ を登録できませんでした。設定で別のショートカットを選択してください。";
 "OK" = "OK";

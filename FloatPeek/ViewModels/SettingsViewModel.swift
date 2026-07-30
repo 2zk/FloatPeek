@@ -25,6 +25,8 @@ final class SettingsViewModel: ObservableObject {
     @Published var scaleImagesWithWindow: Bool
     @Published var displayedFileExtensions: Set<String>
     @Published var quickLookBackgroundColor: QuickLookBackgroundColor
+    @Published var automaticallyChecksForUpdates: Bool
+    @Published var updateCheckFrequency: UpdateCheckFrequency
     @Published var tabs: [FolderTab]
     @Published var selectedTabID: FolderTab.ID?
     @Published private(set) var errorMessage: String?
@@ -43,6 +45,8 @@ final class SettingsViewModel: ObservableObject {
     private let onScaleImagesWithWindowChange: @MainActor (Bool) -> Void
     private let onDisplayedFileExtensionsChange: @MainActor (Set<String>) -> Void
     private let onQuickLookBackgroundColorChange: @MainActor (QuickLookBackgroundColor) -> Void
+    private let onAutomaticallyChecksForUpdatesChange: @MainActor (Bool) -> Void
+    private let onUpdateCheckFrequencyChange: @MainActor (UpdateCheckFrequency) -> Void
 
     init(
         shortcut: KeyboardShortcut,
@@ -61,13 +65,19 @@ final class SettingsViewModel: ObservableObject {
         onToggleWindow: @escaping @MainActor () -> Void,
         onScaleImagesWithWindowChange: @escaping @MainActor (Bool) -> Void,
         onDisplayedFileExtensionsChange: @escaping @MainActor (Set<String>) -> Void,
-        onQuickLookBackgroundColorChange: @escaping @MainActor (QuickLookBackgroundColor) -> Void
+        onQuickLookBackgroundColorChange: @escaping @MainActor (QuickLookBackgroundColor) -> Void,
+        automaticallyChecksForUpdates: Bool = true,
+        onAutomaticallyChecksForUpdatesChange: @escaping @MainActor (Bool) -> Void = { _ in },
+        updateCheckFrequency: UpdateCheckFrequency = .weekly,
+        onUpdateCheckFrequencyChange: @escaping @MainActor (UpdateCheckFrequency) -> Void = { _ in }
     ) {
         self.shortcut = shortcut
         self.language = language
         self.scaleImagesWithWindow = scaleImagesWithWindow
         self.displayedFileExtensions = displayedFileExtensions
         self.quickLookBackgroundColor = quickLookBackgroundColor
+        self.automaticallyChecksForUpdates = automaticallyChecksForUpdates
+        self.updateCheckFrequency = updateCheckFrequency
         self.tabs = tabs
         self.selectedTabID = selectedTabID
         self.localization = localization
@@ -80,6 +90,8 @@ final class SettingsViewModel: ObservableObject {
         self.onScaleImagesWithWindowChange = onScaleImagesWithWindowChange
         self.onDisplayedFileExtensionsChange = onDisplayedFileExtensionsChange
         self.onQuickLookBackgroundColorChange = onQuickLookBackgroundColorChange
+        self.onAutomaticallyChecksForUpdatesChange = onAutomaticallyChecksForUpdatesChange
+        self.onUpdateCheckFrequencyChange = onUpdateCheckFrequencyChange
     }
 
     func selectTab(id: FolderTab.ID) {
@@ -169,6 +181,8 @@ final class SettingsViewModel: ObservableObject {
         onScaleImagesWithWindowChange(scaleImagesWithWindow)
         onDisplayedFileExtensionsChange(displayedFileExtensions)
         onQuickLookBackgroundColorChange(quickLookBackgroundColor)
+        onAutomaticallyChecksForUpdatesChange(automaticallyChecksForUpdates)
+        onUpdateCheckFrequencyChange(updateCheckFrequency)
         errorMessage = nil
         return true
     }

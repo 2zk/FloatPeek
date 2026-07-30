@@ -1,5 +1,15 @@
 "Settings…" = "Settings…";
 "Check for Updates…" = "Check for Updates…";
+"Updates" = "Updates";
+"Automatically check for updates" = "Automatically check for updates";
+"Update Check Frequency" = "Update Check Frequency";
+"Daily" = "Daily";
+"Weekly" = "Weekly";
+"Monthly" = "Monthly";
+"Check Now" = "Check Now";
+"Last checked" = "Last checked:";
+"Not checked yet" = "Not checked yet";
+"Version %@" = "Version %@";
 "Global shortcut unavailable" = "Global shortcut unavailable";
 "%@ could not be registered. Choose another shortcut in Settings." = "%@ could not be registered. Choose another shortcut in Settings.";
 "OK" = "OK";

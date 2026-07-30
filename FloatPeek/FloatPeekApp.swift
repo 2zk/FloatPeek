@@ -16,6 +16,7 @@ struct FloatPeekApp: App {
                 .environmentObject(localization)
                 .environmentObject(tabManager)
                 .environmentObject(appCoordinator)
+                .environmentObject(updateManager)
                 .environment(\.locale, localization.locale)
         }
         .defaultSize(width: 160, height: 600)

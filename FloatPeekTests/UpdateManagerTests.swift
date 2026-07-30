@@ -31,6 +31,52 @@ final class UpdateManagerTests: XCTestCase {
         XCTAssertTrue(manager.canCheckForUpdates)
     }
 
+    func testAutomaticUpdateChecksCanBeChanged() {
+        let driver = FakeUpdateDriver(
+            canCheckForUpdates: true,
+            automaticallyChecksForUpdates: true
+        )
+        let manager = UpdateManager(driver: driver)
+
+        manager.setAutomaticallyChecksForUpdates(false)
+
+        XCTAssertFalse(manager.automaticallyChecksForUpdates)
+        XCTAssertFalse(driver.automaticallyChecksForUpdates)
+    }
+
+    func testUpdateCheckFrequencyCanBeChanged() {
+        let driver = FakeUpdateDriver(
+            canCheckForUpdates: true,
+            updateCheckInterval: UpdateCheckFrequency.weekly.rawValue
+        )
+        let manager = UpdateManager(driver: driver)
+
+        manager.setUpdateCheckFrequency(.monthly)
+
+        XCTAssertEqual(manager.updateCheckFrequency, .monthly)
+        XCTAssertEqual(driver.updateCheckInterval, UpdateCheckFrequency.monthly.rawValue)
+    }
+
+    func testUnknownUpdateCheckIntervalUsesWeeklyFrequency() {
+        let driver = FakeUpdateDriver(
+            canCheckForUpdates: true,
+            updateCheckInterval: 123
+        )
+        let manager = UpdateManager(driver: driver)
+
+        XCTAssertEqual(manager.updateCheckFrequency, .weekly)
+    }
+
+    func testLastUpdateCheckDateFollowsDriver() {
+        let driver = FakeUpdateDriver(canCheckForUpdates: true)
+        let manager = UpdateManager(driver: driver)
+        let date = Date(timeIntervalSinceReferenceDate: 123)
+
+        driver.lastUpdateCheckDate = date
+
+        XCTAssertEqual(manager.lastUpdateCheckDate, date)
+    }
+
     func testAppBundleUsesApprovalRequiredUpdateConfiguration() {
         let info = Bundle.main.infoDictionary
 
@@ -43,7 +89,7 @@ final class UpdateManagerTests: XCTestCase {
             "dmTOB/jzQBIFxfaVKLgl/NhxFUkGL0Bfaqo877brDbg="
         )
         XCTAssertEqual(info?["SUEnableAutomaticChecks"] as? Bool, true)
-        XCTAssertEqual(info?["SUScheduledCheckInterval"] as? Int, 86_400)
+        XCTAssertEqual(info?["SUScheduledCheckInterval"] as? Int, 604_800)
         XCTAssertEqual(info?["SUAutomaticallyUpdate"] as? Bool, false)
         XCTAssertEqual(info?["SUAllowsAutomaticUpdates"] as? Bool, false)
         XCTAssertEqual(info?["SUEnableSystemProfiling"] as? Bool, false)
@@ -63,19 +109,56 @@ final class UpdateManagerTests: XCTestCase {
 @MainActor
 private final class FakeUpdateDriver: UpdateDriving {
     @Published var canCheckForUpdates: Bool
+    @Published var automaticallyChecksForUpdates: Bool
+    @Published var updateCheckInterval: TimeInterval
+    @Published var lastUpdateCheckDate: Date?
     private(set) var checkForUpdatesCallCount = 0
 
-    init(canCheckForUpdates: Bool) {
+    init(
+        canCheckForUpdates: Bool,
+        automaticallyChecksForUpdates: Bool = true,
+        updateCheckInterval: TimeInterval = UpdateCheckFrequency.weekly.rawValue,
+        lastUpdateCheckDate: Date? = nil
+    ) {
         self.canCheckForUpdates = canCheckForUpdates
+        self.automaticallyChecksForUpdates = automaticallyChecksForUpdates
+        self.updateCheckInterval = updateCheckInterval
+        self.lastUpdateCheckDate = lastUpdateCheckDate
     }
 
     func checkForUpdates() {
         checkForUpdatesCallCount += 1
     }
 
+    func setAutomaticallyChecksForUpdates(_ isEnabled: Bool) {
+        automaticallyChecksForUpdates = isEnabled
+    }
+
+    func setUpdateCheckInterval(_ interval: TimeInterval) {
+        updateCheckInterval = interval
+    }
+
     func observeCanCheckForUpdates(
         _ handler: @escaping @MainActor (Bool) -> Void
     ) -> AnyCancellable {
         $canCheckForUpdates.sink(receiveValue: handler)
+    }
+
+    func observeAutomaticallyChecksForUpdates(
+        _ handler: @escaping @MainActor (Bool) -> Void
+    ) -> AnyCancellable {
+        $automaticallyChecksForUpdates.sink(receiveValue: handler)
+    }
+
+    func observeUpdateCheckInterval(
+        _ handler: @escaping @MainActor (TimeInterval) -> Void
+    ) -> AnyCancellable {
+        $updateCheckInterval.sink(receiveValue: handler)
+    }
+
+    func observeLastUpdateCheckDate(
+        _ handler: @escaping @MainActor (Date?) -> Void
+    ) -> AnyCancellable {
+        $lastUpdateCheckDate.sink(receiveValue: handler)
     }
 }
