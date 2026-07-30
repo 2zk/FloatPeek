@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: macos-15
+
+    steps:
+      - name: ソースコードを取得
+        uses: actions/checkout@v6
+
+      - name: シェルスクリプトを検証
+        run: |
+          shellcheck -x Scripts/*.sh
+          for script_path in Scripts/*.sh; do
+            bash -n "$script_path"
+          done
+
+      - name: 全テストを実行
+        run: |
+          xcodebuild test \
+            -project FloatPeek.xcodeproj \
+            -scheme FloatPeek \
+            -destination "platform=macOS" \
+            -derivedDataPath .build/DerivedData
+
+      - name: リリースパイプラインを検証
+        run: ./Scripts/validate-release-pipeline.sh

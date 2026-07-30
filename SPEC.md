@@ -808,7 +808,7 @@ dist/FloatPeek-X.Y.Z.md
 dist/appcast.xml
 ```
 
-v2.0.0以降のアプリ本体はarm64専用とする。Intel Mac向け最終版はv1.3.0とし、以後は更新対象外とする。
+v2.0.0以降の配布アプリに含まれるすべてのMach-Oバイナリはarm64専用とする。Intel Mac向け最終版はv1.3.0とし、以後は更新対象外とする。
 
 ## 12.2 ローカルリリースビルド
 
@@ -820,32 +820,37 @@ v2.0.0以降のアプリ本体はarm64専用とする。Intel Mac向け最終版
 
 1. `X.Y.Z` 形式の検証
 2. `xcodebuild archive`によるarm64・ad-hoc署名のReleaseアーカイブ生成
-3. Bundle version、arm64専用バイナリ、Sparkle内包、ad-hoc署名の確認
-4. アプリへ埋め込んだSparkle EdDSA公開鍵の確認
-5. ZIPとSHA-256の生成
+3. Sparkle内部を含むすべてのMach-Oバイナリをarm64へthin
+4. Sparkle内部コンポーネントとアプリを内側からad-hoc再署名
+5. Bundle version、全Mach-Oのarm64、Sparkle内包、ad-hoc署名の確認
+6. アプリへ埋め込んだSparkle EdDSA公開鍵の確認
+7. ZIPと、アーカイブのファイル名だけを含むポータブルなSHA-256ファイルの生成
 
 既存の同名 ZIP または checksum は上書きしない。
 
-リリース作成にはSparkle EdDSA公開鍵を指定する。
+Sparkle EdDSA公開鍵は秘密情報ではないため、Xcodeプロジェクトのbuild settingとしてリポジトリ管理する。テスト用の使い捨て鍵などへ一時的に差し替える場合だけ、環境変数で指定する。
 
 ```sh
 SPARKLE_PUBLIC_ED_KEY="<公開鍵>" ./Scripts/build-release.sh 2.0.0
 ```
 
-続いて`SPARKLE_ED_PRIVATE_KEY`を標準入力経由でSparkleの`generate_appcast`へ渡し、`Scripts/generate-appcast.sh`で署名済みappcastを生成する。
+続いて`SPARKLE_ED_PRIVATE_KEY`を標準入力経由でSparkleの`generate_appcast`へ渡し、`Scripts/generate-appcast.sh`で署名済みappcastを生成する。`Scripts/validate-appcast.sh`はXML構造をXPathで検証し、Sparkleの`sign_update --verify`でappcast、ZIP、リリースノートのEdDSA署名を検証する。
 
 ## 12.3 GitHub Actions
 
-`.github/workflows/release.yml` は `v*` タグ push で起動する。正式なタグ形式は `vX.Y.Z`。
+`.github/workflows/ci.yml`はPull Requestと`main`へのpushで起動し、シェルスクリプト、全テスト、使い捨てEdDSA鍵によるリリースパイプライン、Homebrew Cask styleを検証する。
+
+`.github/workflows/release.yml`は`v*`タグpushで起動する。正式なタグ形式は`vX.Y.Z`。`validate`、`publish`、`update-homebrew`の3ジョブを順番に実行し、検証が完了するまで外部公開処理を行わない。
 
 ワークフロー:
 
-1. タグ形式と Secret を検証
-2. arm64・ad-hoc署名のアプリとZIPを作成
-3. EdDSA署名済みappcastとリリースノートを生成
-4. GitHub Releaseをドラフトで作り、全アセット確認後に公開
-5. Homebrew Caskをテンプレートから生成・検証
-6. `2zk/homebrew-tap`の`Casks/floatpeek.rb`を更新
+1. `validate`: タグ形式とSecret、シェルスクリプト、全テスト、使い捨て鍵によるリリースパイプラインを検証
+2. `publish`: arm64・ad-hoc署名のアプリ、ZIP、EdDSA署名済みappcast、リリースノートを生成
+3. `publish`: GitHub Releaseをドラフトで作り、全アセット確認後に公開
+4. `update-homebrew`: 公開済みchecksumからHomebrew Caskを生成・検証
+5. `update-homebrew`: `2zk/homebrew-tap`の`Casks/floatpeek.rb`を更新
+
+`update-homebrew`が失敗した場合は、公開済みReleaseを変更せず、そのジョブだけを再実行できる。
 
 必要な Repository Secret:
 
@@ -855,8 +860,6 @@ SPARKLE_PUBLIC_ED_KEY="<公開鍵>" ./Scripts/build-release.sh 2.0.0
 | `SPARKLE_ED_PRIVATE_KEY` | 更新署名用EdDSA秘密鍵 |
 
 token は fine-grained personal access token とし、対象リポジトリを `homebrew-tap` のみに限定する。
-
-Repository Variable `SPARKLE_PUBLIC_ED_KEY`には対応するEdDSA公開鍵を登録する。
 
 ワークフロー自身は FloatPeek の GitHub Release 作成に `contents: write` を使用する。
 
