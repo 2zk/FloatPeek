@@ -51,7 +51,7 @@ brew upgrade --cask floatpeek
 brew uninstall --cask floatpeek
 ```
 
-v1.xからv2.0.0へ移行するときは、上記の`brew upgrade`またはGitHub Releaseからの再インストールが一度だけ必要です。v2.0.0以降は初期設定で毎週更新を自動確認し、設定画面から毎日・毎週・毎月を選択できます。利用者が承認した場合だけインストールして再起動します。アプリメニューの`アップデートを確認…`から手動確認することもできます。
+v1.xからv2.0.0へ移行するときは、上記の`brew upgrade`またはGitHub Releaseからの再インストールが一度だけ必要です。v2.0.0以降は初期設定で毎週更新を自動確認し、設定画面から毎日・毎週・毎月を選択できます。利用者が承認した場合だけインストールして再起動します。手動確認も設定画面から実行できます。
 
 ### 初回起動
 
@@ -177,7 +177,7 @@ brew upgrade --cask floatpeek
 brew uninstall --cask floatpeek
 ```
 
-Moving from v1.x to v2.0.0 requires one manual `brew upgrade` or reinstall from GitHub Releases. Starting with v2.0.0, FloatPeek checks for updates every 24 hours and installs only after approval. You can also use `Check for Updates…` from the application menu.
+Moving from v1.x to v2.0.0 requires one manual `brew upgrade` or reinstall from GitHub Releases. Starting with v2.0.0, FloatPeek checks for updates every 24 hours and installs only after approval. You can also check manually from the Settings window.
 
 ### First launch
 
