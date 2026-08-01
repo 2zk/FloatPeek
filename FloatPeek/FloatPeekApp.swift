@@ -23,13 +23,6 @@ struct FloatPeekApp: App {
         .commands {
             CommandGroup(replacing: .newItem) {}
 
-            CommandGroup(after: .appInfo) {
-                Button(localization.localized("Check for Updates…")) {
-                    updateManager.checkForUpdates()
-                }
-                .disabled(!updateManager.canCheckForUpdates)
-            }
-
             CommandGroup(replacing: .appSettings) {
                 Button(localization.localized("Settings…")) {
                     WindowManager.shared.showWindow()
