@@ -62,3 +62,8 @@ enum AppEnvironment {
         environment["XCTestConfigurationFilePath"] != nil
     }
 }
+
+enum AppLinks {
+    static let repositoryName = "2zk/FloatPeek"
+    static let repositoryURL = URL(string: "https://github.com/2zk/FloatPeek")!
+}

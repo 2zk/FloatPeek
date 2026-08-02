@@ -58,6 +58,16 @@ final class AppLifecycleTests: XCTestCase {
         )
     }
 
+    func testAboutPanelCreditsLinkToRepository() {
+        let credits = AboutPanelPresenter.credits
+
+        XCTAssertEqual(credits.string, AppLinks.repositoryName)
+        XCTAssertEqual(
+            credits.attribute(.link, at: 0, effectiveRange: nil) as? URL,
+            AppLinks.repositoryURL
+        )
+    }
+
     func testSystemLanguageUsesSupportedPreferredLanguage() {
         XCTAssertEqual(
             AppLanguage.system.resolvedLanguageCode(preferredLanguages: ["ja-JP", "en-US"]),

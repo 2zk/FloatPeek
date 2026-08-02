@@ -23,6 +23,12 @@ struct FloatPeekApp: App {
         .commands {
             CommandGroup(replacing: .newItem) {}
 
+            CommandGroup(replacing: .appInfo) {
+                Button(localization.localized("About FloatPeek")) {
+                    AboutPanelPresenter.show()
+                }
+            }
+
             CommandGroup(replacing: .appSettings) {
                 Button(localization.localized("Settings…")) {
                     WindowManager.shared.showWindow()
@@ -31,6 +37,27 @@ struct FloatPeekApp: App {
                 .keyboardShortcut(",", modifiers: [.command])
             }
         }
+    }
+}
+
+@MainActor
+enum AboutPanelPresenter {
+    static var credits: NSAttributedString {
+        let credits = NSMutableAttributedString(string: AppLinks.repositoryName)
+        let paragraphStyle = NSMutableParagraphStyle()
+        paragraphStyle.alignment = .center
+        credits.addAttributes(
+            [
+                .link: AppLinks.repositoryURL,
+                .paragraphStyle: paragraphStyle
+            ],
+            range: NSRange(location: 0, length: credits.length)
+        )
+        return credits
+    }
+
+    static func show() {
+        NSApp.orderFrontStandardAboutPanel(options: [.credits: credits])
     }
 }
 

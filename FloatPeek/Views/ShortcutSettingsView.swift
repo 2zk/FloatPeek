@@ -239,6 +239,9 @@ struct SettingsView: View {
             Text(localization.localizedFormat("Version %@", appVersion))
                 .font(.caption)
                 .foregroundStyle(.secondary)
+
+            Link(AppLinks.repositoryName, destination: AppLinks.repositoryURL)
+                .font(.caption)
         }
     }
 
