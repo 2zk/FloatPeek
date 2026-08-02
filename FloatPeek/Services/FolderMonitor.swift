@@ -181,10 +181,17 @@ final class FolderMonitor: FolderMonitoring, @unchecked Sendable {
     }
 
     private func scheduleChange() {
-        pendingChange?.cancel()
-        let changeHandler = changeHandler
-        let workItem = DispatchWorkItem {
-            changeHandler?()
+        guard pendingChange == nil else {
+            return
+        }
+
+        let workItem = DispatchWorkItem { [weak self] in
+            guard let self else {
+                return
+            }
+
+            self.pendingChange = nil
+            self.changeHandler?()
         }
         pendingChange = workItem
         eventQueue.asyncAfter(

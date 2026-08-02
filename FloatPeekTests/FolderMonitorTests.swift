@@ -52,6 +52,27 @@ final class FolderMonitorTests: XCTestCase {
         await fulfillment(of: [changeExpectation], timeout: 3)
     }
 
+    func testContinuousChangesDoNotPostponeNotificationIndefinitely() async throws {
+        try createFile(named: "image.png")
+        monitor = FolderMonitor(debounceInterval: 0.2, eventLatency: 0.01)
+        let changeExpectation = expectation(description: "連続変更中の通知")
+        await startMonitoring(folderURL: temporaryDirectory) {
+            changeExpectation.fulfill()
+        }
+
+        let fileURL = temporaryDirectory.appendingPathComponent("image.png")
+        let writer = Task.detached {
+            for index in 0..<20 {
+                try Data("updated-\(index)".utf8).write(to: fileURL)
+                try await Task.sleep(nanoseconds: 50_000_000)
+            }
+        }
+
+        await fulfillment(of: [changeExpectation], timeout: 0.7)
+        await monitor.stopMonitoring()
+        _ = try await writer.value
+    }
+
     func testRenamingSupportedFileSendsChange() async throws {
         try createFile(named: "before.png")
         let changeExpectation = expectation(description: "名前変更通知")
