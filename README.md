@@ -1,16 +1,28 @@
 # FloatPeek
 
-FloatPeek is a lightweight macOS file browser that opens with a global keyboard shortcut.
+**スクリーンショットをいつも手元に。 / Keep your screenshots within reach.**
 
 [日本語](#日本語) | [English](#english)
 
 ## 日本語
 
-FloatPeek は、よく使うフォルダを小さなフローティングウィンドウで素早く確認するための macOS アプリです。グローバルショートカットで表示・非表示を切り替え、ファイルのプレビュー、コピー、共有、整理を手軽に行えます。
+スクリーンショットをチャットへ投稿するたびに、Finder で保存先を開いていませんか？
+
+FloatPeek は、スクリーンショットなどを保存したフォルダを、小さなフローティングウィンドウで素早く確認するための macOS ファイルブラウザです。通常のデスクトップ作業中はほかのアプリより前面に置き、macOS のスクリーンショットに近い `⌘⇧1` で表示・非表示を切り替えられます。必要な画像を見つけたら、そのままチャットアプリへドラッグ＆ドロップできます。
+
+画像だけでなく、PDF のサムネイルや一般文書のファイルアイコンも表示できます。
+
+### こんな人に向いています
+
+- スクリーンショットや画像をチャットへ頻繁に投稿する
+- Finder の大きなウィンドウを開かず、特定フォルダのファイルを省スペースで一覧したい
+- 画像置き場を通常のデスクトップ作業中はほかのアプリより前面に置きたい
+- macOS のスクリーンショットに近いショートカットで素早く呼び出したい
 
 ### 主な機能
 
-- グローバルショートカットによるウィンドウの表示・非表示
+- 小さなフローティングウィンドウによるファイル一覧
+- `⌘⇧1`（変更可能）によるウィンドウの表示・非表示
 - 複数フォルダの登録、並び替え、切り替え
 - 画像と PDF のサムネイル、一般文書のファイルアイコン表示
 - 表示するファイル拡張子の選択
@@ -133,11 +145,23 @@ v1.xからv2.0.0へ移行するときは、上記の`brew upgrade`またはGitHu
 
 ## English
 
-FloatPeek is a macOS app for quickly browsing frequently used folders in a small floating window. Show or hide it with a global shortcut, then preview, copy, share, or organize files without switching to Finder.
+Do you open Finder every time you want to post a screenshot in a chat?
+
+FloatPeek is a macOS file browser that keeps folders containing screenshots and other files within easy reach in a small floating window. During normal desktop work, keep it above other apps and press `⌘⇧1`—a shortcut familiar to macOS screenshot users—to show or hide it. When you find the image you need, drag it straight into your chat app.
+
+FloatPeek also displays PDF thumbnails and file icons for common documents.
+
+### Who FloatPeek is for
+
+- People who frequently share screenshots or images in chat apps
+- People who want a compact view of a specific folder without opening a full Finder window
+- People who want to keep an image folder above other apps during normal desktop work
+- People who want quick access with a shortcut similar to macOS screenshot shortcuts
 
 ### Features
 
-- Show or hide the window with a global keyboard shortcut
+- Browse files in a small floating window
+- Show or hide the window with `⌘⇧1` (customizable)
 - Register, reorder, and switch between multiple folders
 - Display thumbnails for images and PDFs and file icons for common documents
 - Choose which file extensions to display
