@@ -1,3 +1,4 @@
+import AppKit
 import Combine
 import Foundation
 import Sparkle
@@ -52,6 +53,7 @@ protocol UpdateDriving: AnyObject {
 @MainActor
 final class SparkleUpdateDriver: UpdateDriving {
     private let updaterController: SPUStandardUpdaterController
+    private let updaterDelegate: SparkleUpdateLifecycleDelegate
 
     var canCheckForUpdates: Bool {
         updaterController.updater.canCheckForUpdates
@@ -70,9 +72,10 @@ final class SparkleUpdateDriver: UpdateDriving {
     }
 
     init(bundle: Bundle = .main) {
+        updaterDelegate = SparkleUpdateLifecycleDelegate()
         updaterController = SPUStandardUpdaterController(
             startingUpdater: false,
-            updaterDelegate: nil,
+            updaterDelegate: updaterDelegate,
             userDriverDelegate: nil
         )
 
@@ -139,6 +142,25 @@ final class SparkleUpdateDriver: UpdateDriving {
         return URL(string: feedURL)?.scheme == "https"
             && !publicKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && !publicKey.contains("$(")
+    }
+}
+
+@MainActor
+final class SparkleUpdateLifecycleDelegate: NSObject, SPUUpdaterDelegate {
+    private let requestApplicationTermination: () -> Void
+
+    init(requestApplicationTermination: @escaping () -> Void = {
+        NSApp.terminate(nil)
+    }) {
+        self.requestApplicationTermination = requestApplicationTermination
+    }
+
+    func updaterWillRelaunchApplication(_ updater: SPUUpdater) {
+        requestTerminationForRelaunch()
+    }
+
+    func requestTerminationForRelaunch() {
+        requestApplicationTermination()
     }
 }
 
