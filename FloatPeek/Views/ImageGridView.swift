@@ -33,8 +33,8 @@ struct ImageGridView: View {
                             image: image,
                             isSelected: selectedImageIDs.contains(image.id),
                             selectedDragURLs: selectedDragURLs(for: image),
-                            thumbnailHeight: thumbnailHeight,
-                            thumbnailSize: thumbnailSize,
+                            thumbnailHeight: thumbnailHeight(for: image),
+                            thumbnailSize: thumbnailSize(for: image),
                             onSelect: { mode in
                                 onSelect(image, mode)
                             },
@@ -89,19 +89,22 @@ struct ImageGridView: View {
         )
     }
 
-    private var thumbnailHeight: CGFloat {
-        guard scaleImagesWithWindow else {
+    private func thumbnailHeight(for image: ImageFile) -> CGFloat {
+        guard scaleImagesWithWindow,
+              image.presentationKind == .thumbnail else {
             return Self.fixedThumbnailHeight
         }
 
         return expandedThumbnailWidth * 3 / 4
     }
 
-    private var thumbnailSize: CGSize {
-        guard scaleImagesWithWindow else {
+    private func thumbnailSize(for image: ImageFile) -> CGSize {
+        guard scaleImagesWithWindow,
+              image.presentationKind == .thumbnail else {
             return Self.fixedThumbnailSize
         }
 
+        let thumbnailHeight = thumbnailHeight(for: image)
         return CGSize(
             width: roundedThumbnailDimension(expandedThumbnailWidth),
             height: roundedThumbnailDimension(thumbnailHeight)

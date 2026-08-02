@@ -40,19 +40,51 @@ struct AppSettings {
     static let selectedFolderTabIDKey = "selectedFolderTabID"
     static let scaleImagesWithWindowKey = "scaleImagesWithWindow"
     static let displayedFileExtensionsKey = "displayedFileExtensions"
+    static let displayedFileExtensionsMigrationVersionKey =
+        "displayedFileExtensionsMigrationVersion"
     static let quickLookBackgroundColorComponentsKey = "quickLookBackgroundColorComponents"
     private static let legacyQuickLookBorderColorComponentsKey =
         "quickLookBorderColorComponents"
 
-    static let supportedFileExtensions = [
+    static let thumbnailFileExtensions = [
         "jpg",
         "jpeg",
         "png",
         "gif",
         "heic",
+        "webp",
+        "tif",
+        "tiff",
+        "bmp",
+        "svg",
         "pdf"
     ]
+    static let iconFileExtensions = [
+        "txt",
+        "md",
+        "csv",
+        "rtf",
+        "doc",
+        "docx",
+        "xls",
+        "xlsx",
+        "ppt",
+        "pptx"
+    ]
+    static let supportedFileExtensions = thumbnailFileExtensions + iconFileExtensions
+    static let allThumbnailFileExtensions = Set(thumbnailFileExtensions)
+    static let allIconFileExtensions = Set(iconFileExtensions)
     static let allSupportedFileExtensions = Set(supportedFileExtensions)
+    static let defaultDisplayedFileExtensions = allThumbnailFileExtensions
+
+    private static let newlyAddedThumbnailFileExtensions: Set<String> = [
+        "webp",
+        "tif",
+        "tiff",
+        "bmp",
+        "svg"
+    ]
+    private static let displayedFileExtensionsMigrationVersion = 1
 
     static let defaultShortcut = KeyboardShortcut(
         keyCode: UInt32(kVK_ANSI_1),
@@ -75,13 +107,25 @@ struct AppSettings {
     static func loadDisplayedFileExtensions(
         from userDefaults: PreferencesStoring = AppEnvironment.preferences
     ) -> Set<String> {
-        guard let storedExtensions = userDefaults.object(
+        let storedExtensions = userDefaults.object(
             forKey: displayedFileExtensionsKey
-        ) as? [String] else {
-            return allSupportedFileExtensions
+        ) as? [String]
+        var displayedExtensions = storedExtensions.map {
+            Set($0).intersection(allSupportedFileExtensions)
+        } ?? defaultDisplayedFileExtensions
+
+        let migrationVersion = userDefaults.integer(
+            forKey: displayedFileExtensionsMigrationVersionKey
+        )
+        guard migrationVersion < displayedFileExtensionsMigrationVersion else {
+            return displayedExtensions
         }
 
-        return Set(storedExtensions).intersection(allSupportedFileExtensions)
+        if storedExtensions != nil {
+            displayedExtensions.formUnion(newlyAddedThumbnailFileExtensions)
+        }
+        saveDisplayedFileExtensions(displayedExtensions, to: userDefaults)
+        return displayedExtensions
     }
 
     static func saveDisplayedFileExtensions(
@@ -90,6 +134,10 @@ struct AppSettings {
     ) {
         let storedExtensions = supportedFileExtensions.filter(extensions.contains)
         userDefaults.set(storedExtensions, forKey: displayedFileExtensionsKey)
+        userDefaults.set(
+            displayedFileExtensionsMigrationVersion,
+            forKey: displayedFileExtensionsMigrationVersionKey
+        )
     }
 
     static func loadQuickLookBackgroundColor(

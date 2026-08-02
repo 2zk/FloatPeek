@@ -42,6 +42,23 @@ final class ImageFileLoaderTests: XCTestCase {
         XCTAssertEqual(images.map(\.fileName), ["b.png"])
     }
 
+    func testLoadImagesIncludesSelectedDocumentExtensionCaseInsensitively() throws {
+        try createFile(named: "notes.TXT", modifiedAt: Date(timeIntervalSince1970: 10))
+        try createFile(named: "report.DOCX", modifiedAt: Date(timeIntervalSince1970: 20))
+
+        let images = try ImageFileLoader(
+            displayedFileExtensions: ["txt", "docx"]
+        ).loadImages(in: temporaryDirectory, sortedBy: .fileName)
+
+        XCTAssertEqual(images.map(\.fileName), ["notes.TXT", "report.DOCX"])
+    }
+
+    func testFilePresentationKindUsesExtensionCaseInsensitively() {
+        XCTAssertEqual(makeImageFile(named: "image.WEBP").presentationKind, .thumbnail)
+        XCTAssertEqual(makeImageFile(named: "report.DOCX").presentationKind, .fileIcon)
+        XCTAssertEqual(makeImageFile(named: "unknown.bin").presentationKind, .fileIcon)
+    }
+
     func testLoadImagesSortsByModifiedDateDescendingThenNameAscending() throws {
         let newerDate = Date(timeIntervalSince1970: 20)
         let olderDate = Date(timeIntervalSince1970: 10)
@@ -96,7 +113,7 @@ final class ImageFileLoaderTests: XCTestCase {
         )
     }
 
-    private func makeImageFile(named fileName: String, addedAt: Date?) -> ImageFile {
+    private func makeImageFile(named fileName: String, addedAt: Date? = nil) -> ImageFile {
         ImageFile(
             url: temporaryDirectory.appendingPathComponent(fileName),
             addedAt: addedAt,

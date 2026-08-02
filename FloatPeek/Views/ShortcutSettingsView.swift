@@ -3,6 +3,14 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct SettingsView: View {
+    private static let settingsSize = CGSize(width: 840, height: 720)
+    private static let foldersColumnWidth: CGFloat = 440
+    private static let detailsColumnWidth: CGFloat = 336
+    private static let extensionColumns = Array(
+        repeating: GridItem(.flexible(minimum: 60), spacing: 8, alignment: .leading),
+        count: 4
+    )
+
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var localization: LocalizationManager
 
@@ -16,11 +24,30 @@ struct SettingsView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            tabsSection
+        VStack(spacing: 0) {
+            HStack(alignment: .top, spacing: 24) {
+                tabsSection
+                    .frame(width: Self.foldersColumnWidth)
+                    .frame(maxHeight: .infinity, alignment: .top)
+
+                detailsColumn
+                    .frame(width: Self.detailsColumnWidth)
+                    .frame(maxHeight: .infinity, alignment: .top)
+            }
+            .padding(20)
+            .frame(maxHeight: .infinity)
 
             Divider()
 
+            actionButtons
+                .padding(.horizontal, 20)
+                .padding(.vertical, 12)
+        }
+        .frame(width: Self.settingsSize.width, height: Self.settingsSize.height)
+    }
+
+    private var detailsColumn: some View {
+        VStack(alignment: .leading, spacing: 10) {
             displaySection
 
             Divider()
@@ -34,10 +61,7 @@ struct SettingsView: View {
             Divider()
 
             updatesSection
-            actionButtons
         }
-        .padding(20)
-        .frame(width: 560)
     }
 
     private var tabsSection: some View {
@@ -58,7 +82,7 @@ struct SettingsView: View {
             if viewModel.tabs.isEmpty {
                 Text(localization.localized("No tabs configured"))
                     .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, minHeight: 64)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 ScrollView(.vertical) {
                     LazyVStack(spacing: 8) {
@@ -79,7 +103,7 @@ struct SettingsView: View {
                         }
                     }
                 }
-                .frame(maxHeight: 260)
+                .frame(maxHeight: .infinity)
             }
 
             Button {
@@ -95,27 +119,27 @@ struct SettingsView: View {
     }
 
     private var displaySection: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 6) {
             Text(localization.localized("Display"))
                 .font(.headline)
 
             Toggle(
-                localization.localized("Scale images with window width"),
+                localization.localized("Scale images and PDFs with window width"),
                 isOn: $viewModel.scaleImagesWithWindow
             )
 
             Text(localization.localized("Displayed File Extensions"))
                 .font(.subheadline)
 
-            HStack(spacing: 16) {
-                ForEach(AppSettings.supportedFileExtensions, id: \.self) { fileExtension in
-                    Toggle(
-                        ".\(fileExtension)",
-                        isOn: displayedFileExtensionBinding(fileExtension)
-                    )
-                    .toggleStyle(.checkbox)
-                }
-            }
+            fileExtensionGroup(
+                title: localization.localized("Images and PDFs"),
+                fileExtensions: AppSettings.thumbnailFileExtensions
+            )
+
+            fileExtensionGroup(
+                title: localization.localized("Other Files"),
+                fileExtensions: AppSettings.iconFileExtensions
+            )
 
             Text(localization.localized("Quick Look Background"))
                 .font(.subheadline)
@@ -149,14 +173,12 @@ struct SettingsView: View {
     }
 
     private var shortcutSection: some View {
-        Group {
-            VStack(alignment: .leading, spacing: 6) {
-                Text(localization.localized("Global Shortcut"))
-                    .font(.headline)
-                Text(localization.localized("Click the field, then press the shortcut to show or hide FloatPeek."))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
+        VStack(alignment: .leading, spacing: 6) {
+            Text(localization.localized("Global Shortcut"))
+                .font(.headline)
+            Text(localization.localized("Click the field, then press the shortcut to show or hide FloatPeek."))
+                .font(.caption)
+                .foregroundStyle(.secondary)
 
             ShortcutRecorderView(shortcut: $viewModel.shortcut)
                 .frame(width: 260, height: 48)
@@ -170,7 +192,7 @@ struct SettingsView: View {
     }
 
     private var updatesSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 6) {
             Text(localization.localized("Updates"))
                 .font(.headline)
 
@@ -303,13 +325,70 @@ struct SettingsView: View {
                 viewModel.displayedFileExtensions.contains(fileExtension)
             },
             set: { isDisplayed in
-                if isDisplayed {
-                    viewModel.displayedFileExtensions.insert(fileExtension)
-                } else {
-                    viewModel.displayedFileExtensions.remove(fileExtension)
-                }
+                viewModel.setDisplayedFileExtensions(
+                    [fileExtension],
+                    isDisplayed: isDisplayed
+                )
             }
         )
+    }
+
+    private func fileExtensionGroup(
+        title: String,
+        fileExtensions: [String]
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 8) {
+                Text(title)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Spacer()
+
+                Button(localization.localized("Select All")) {
+                    viewModel.setDisplayedFileExtensions(
+                        fileExtensions,
+                        isDisplayed: true
+                    )
+                }
+                .buttonStyle(.borderless)
+                .controlSize(.small)
+                .disabled(
+                    Set(fileExtensions).isSubset(
+                        of: viewModel.displayedFileExtensions
+                    )
+                )
+
+                Button(localization.localized("Deselect All")) {
+                    viewModel.setDisplayedFileExtensions(
+                        fileExtensions,
+                        isDisplayed: false
+                    )
+                }
+                .buttonStyle(.borderless)
+                .controlSize(.small)
+                .disabled(
+                    Set(fileExtensions).isDisjoint(
+                        with: viewModel.displayedFileExtensions
+                    )
+                )
+            }
+
+            LazyVGrid(
+                columns: Self.extensionColumns,
+                alignment: .leading,
+                spacing: 4
+            ) {
+                ForEach(fileExtensions, id: \.self) { fileExtension in
+                    Toggle(
+                        ".\(fileExtension)",
+                        isOn: displayedFileExtensionBinding(fileExtension)
+                    )
+                    .toggleStyle(.checkbox)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+        }
     }
 
     private var quickLookBackgroundColorBinding: Binding<Color> {

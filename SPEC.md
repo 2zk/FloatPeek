@@ -6,14 +6,14 @@
 
 ## 1.1 概要
 
-FloatPeek は、登録した画像フォルダを小さなフローティングウィンドウで表示する macOS アプリである。グローバルショートカットで素早く表示・非表示を切り替え、画像や PDF の確認、プレビュー、コピー、外部アプリへの受け渡しを行う。
+FloatPeek は、登録したフォルダ内の対応ファイルを小さなフローティングウィンドウで表示する macOS アプリである。グローバルショートカットで素早く表示・非表示を切り替え、画像、PDF、一般文書の確認、プレビュー、コピー、外部アプリへの受け渡しを行う。
 
 Finder の代替ではなく、スクリーンショットなど頻繁に参照するファイルへ素早くアクセスするための専用ビューアとして実装する。
 
 ## 1.2 設計目標
 
 - グローバルショートカットから即座に表示できる
-- 複数の画像フォルダを少ない操作で切り替えられる
+- 複数のフォルダを少ない操作で切り替えられる
 - 数百件程度のファイルを UI をブロックせず表示できる
 - キーボードだけでも選択、プレビュー、コピー、整理を行える
 - ウィンドウの位置とサイズを維持できる
@@ -24,7 +24,7 @@ Finder の代替ではなく、スクリーンショットなど頻繁に参照�
 実装済みの主要機能:
 
 - 複数フォルダの登録、並び替え、選択、永続化
-- 画像・PDF のサムネイル一覧
+- 画像・PDF のサムネイルと一般文書のファイルアイコン一覧
 - 表示対象拡張子の選択と永続化
 - ファイル名、追加日、変更日によるソート
 - 単一選択、トグル選択、範囲選択
@@ -125,17 +125,15 @@ panel.allowsMultipleSelection = false
 対応拡張子:
 
 ```text
-jpg
-jpeg
-png
-gif
-heic
-pdf
+サムネイル: jpg jpeg png gif heic webp tif tiff bmp svg pdf
+ファイルアイコン: txt md csv rtf doc docx xls xlsx ppt pptx
 ```
 
 拡張子の大文字小文字は区別しない。
 
-設定画面では各拡張子をチェックボックスで選択する。初期値は全選択とする。空の選択も有効な設定として保存し、対象ファイルなしの状態を表示する。
+設定画面では各拡張子をチェックボックスで選択する。初期値はサムネイル対象を選択、ファイルアイコン対象を非選択とする。空の選択も有効な設定として保存し、対象ファイルなしの状態を表示する。
+
+拡張子設定の移行バージョンが未保存の場合、既存の選択状態へ `webp`、`tif`、`tiff`、`bmp`、`svg` を一度だけ追加する。移行完了後は利用者が解除した拡張子を再追加しない。
 
 保存成功時に新しい拡張子集合を次の両方へ反映する。
 
@@ -162,18 +160,19 @@ pdf
 
 一覧は `ScrollView` と `LazyVGrid` で構成する。各タイルには次を表示する。
 
-- サムネイル
+- サムネイルまたはファイル種別アイコン
 - ファイル名
 - 選択状態のハイライト
 - 読み込み中または生成失敗を示す状態
 
-`Scale images with window width` が有効な場合:
+`Scale images and PDFs with window width` が有効な場合:
 
 - 1列表示
 - ウィンドウ幅に追従
 - サムネイル領域は 4:3
 - 元画像の縦横比は維持
 - 生成要求サイズは 32pt 単位で切り上げ
+- 一般文書は1列のまま、アイコンを64pt、表示領域を96ptに固定
 
 無効な場合:
 
@@ -183,6 +182,8 @@ pdf
 
 `ThumbnailProvider` は `QLThumbnailGenerator` を使用する。生成に失敗した場合は `NSImage(contentsOf:)` によるフォールバックを試み、それでも読み込めない場合は失敗表示とする。
 
+一般文書はサムネイルを生成しない。拡張子から `UTType` を解決して `NSWorkspace` のシステムアイコンを表示し、解決できない場合は汎用書類アイコンを使用する。
+
 キャッシュ仕様:
 
 - `NSCache` によるメモリキャッシュ
@@ -191,6 +192,7 @@ pdf
 - コスト上限 64 MiB
 - フォルダ変更時に全消去
 - 永続キャッシュなし
+- ファイル種別アイコンは拡張子をキーに別のメモリキャッシュへ保存
 
 ## 3.6 選択
 
@@ -422,12 +424,19 @@ System Default では macOS の優先言語から英語または日本語を選�
 | `noFolderSelected` かつ項目なし | `No folders configured` / `Add a folder in Settings.` |
 | `noFolderSelected` | `No folder selected` / `Choose the folder in Settings.` |
 | `cannotAccessFolder` | `Cannot access folder` / `Choose another folder.` |
-| `noImages` | `No supported files found` / 対応形式一覧 |
+| `noImages` | `No supported files found` / 設定またはフォルダ変更の案内 |
 | `loaded` | サムネイルグリッド |
 
 ## 4.3 設定画面
 
-メニューバーの `Settings…` または `Command+,` で表示する。幅は 560pt。
+メニューバーの `Settings…` または `Command+,` で表示する。サイズは 840 × 720pt。
+
+画面上部は2カラムで構成する。
+
+- 左カラム: フォルダ設定。登録件数が表示領域を超える場合は一覧だけを縦スクロールする
+- 右カラム: Display、Language、Global Shortcut、Updates
+- 画面全体はスクロールしない
+- Actions は両カラムの下部へ固定する
 
 セクション:
 
@@ -435,7 +444,8 @@ System Default では macOS の優先言語から英語または日本語を選�
 2. Display
 3. Language
 4. Global Shortcut
-5. Actions
+5. Updates
+6. Actions
 
 Folders:
 
@@ -450,8 +460,9 @@ Folders:
 
 Display:
 
-- `Scale images with window width`
-- `.jpg`、`.jpeg`、`.png`、`.gif`、`.heic`、`.pdf` のチェックボックス
+- `Scale images and PDFs with window width`
+- 「画像・PDF」と「その他のファイル」に分けた4列の拡張子チェックボックス
+- 各グループの全拡張子を一括で選択・解除する操作
 
 Actions:
 
@@ -553,7 +564,8 @@ Carbon 用キーコードと修飾キーを保持し、表示名生成、`NSEven
 | `folderTabs` | JSON Data | 未保存時は空パスの項目1件 |
 | `selectedFolderTabID` | UUID String | 有効な保存値、なければ先頭 |
 | `selectedFolderPath` | String | 旧バージョンからの移行読込専用 |
-| `displayedFileExtensions` | String Array | 未保存時は全対応拡張子 |
+| `displayedFileExtensions` | String Array | 未保存時は画像・PDF拡張子 |
+| `displayedFileExtensionsMigrationVersion` | Int | 拡張子設定の移行状態 |
 | `scaleImagesWithWindow` | Bool | `true` |
 | `shortcutKeyCode` | Int | `1` キー |
 | `shortcutModifiers` | Int | Command + Shift |
@@ -588,7 +600,7 @@ Carbon 用キーコードと修飾キーを保持し、表示名生成、`NSEven
 | `ContentView` | メイン画面構成、キー操作、Quick Look 連携、設定画面生成 |
 | `HeaderView` | フォルダ切替、ソート選択 |
 | `ImageGridView` | 列構成、タイル配置、主選択へのスクロール |
-| `ImageFileTile` | サムネイル状態、ファイル名、選択表示 |
+| `ImageFileTile` | サムネイルまたはアイコン、ファイル名、選択表示 |
 | `SettingsView` | 設定下書きの編集と保存・破棄 |
 | `StateMessageView` | 空・エラー状態表示 |
 
@@ -609,7 +621,7 @@ Carbon 用キーコードと修飾キーを保持し、表示名生成、`NSEven
 | --- | --- |
 | `ImageFileLoader` | 直下ファイル列挙、拡張子フィルタ、日付取得、ソート |
 | `FolderMonitor` | FSEvents、ルート監視、debounce |
-| `ThumbnailProvider` | 非同期サムネイル生成とメモリキャッシュ |
+| `ThumbnailProvider` | 非同期サムネイル生成、システムアイコン取得、メモリキャッシュ |
 | `FileOpener` | 既定アプリで開く |
 | `FileActionManager` | コピー、パスコピー、Finder 表示、ゴミ箱 |
 | `HotKeyManager` | Carbon ショートカット登録・復元 |
@@ -919,7 +931,7 @@ git push origin v2.0.0
 - 選択中フォルダと表示順を再起動後に復元できる
 - 旧 `selectedFolderPath` を現行形式へ移行できる
 - 直下の対応ファイルだけを表示できる
-- 表示対象拡張子を選択・保存でき、未保存時は全選択になる
+- 表示対象拡張子を選択・保存でき、未保存時は画像・PDFだけが選択される
 - 拡張子変更が一覧と監視へ反映される
 - 3種類のソートが仕様どおり動作する
 

@@ -86,7 +86,9 @@ struct ContentView: View {
                 case .noImages:
                     StateMessageView(
                         title: localization.localized("No supported files found"),
-                        message: localization.localized("Supported formats: jpg, jpeg, png, gif, heic, pdf.")
+                        message: localization.localized(
+                            "Enable file extensions in Settings or choose another folder."
+                        )
                     )
                 }
             }

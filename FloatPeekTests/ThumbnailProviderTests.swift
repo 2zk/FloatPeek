@@ -1,7 +1,16 @@
 import XCTest
 @testable import FloatPeek
 
+@MainActor
 final class ThumbnailProviderTests: XCTestCase {
+    func testFileIconFallsBackForUnknownExtension() {
+        let icon = ThumbnailProvider.shared.fileIcon(
+            forFileExtension: ""
+        )
+
+        XCTAssertFalse(icon.representations.isEmpty)
+    }
+
     func testAspectFitSizePreservesWideImageAspectRatio() throws {
         let sourceSize = CGSize(width: 769, height: 59)
 

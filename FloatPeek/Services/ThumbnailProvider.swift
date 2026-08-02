@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import UniformTypeIdentifiers
 @preconcurrency import QuickLookThumbnailing
 
 @MainActor
@@ -7,6 +8,7 @@ final class ThumbnailProvider {
     static let shared = ThumbnailProvider()
 
     private let cache = NSCache<NSString, NSImage>()
+    private let fileIconCache = NSCache<NSString, NSImage>()
 
     private init() {
         cache.countLimit = 512
@@ -48,6 +50,21 @@ final class ThumbnailProvider {
 
     func clearCache() {
         cache.removeAllObjects()
+        fileIconCache.removeAllObjects()
+    }
+
+    func fileIcon(forFileExtension fileExtension: String) -> NSImage {
+        let normalizedExtension = fileExtension.lowercased()
+        let cacheKey = (normalizedExtension.isEmpty ? "unknown" : normalizedExtension) as NSString
+        if let cachedIcon = fileIconCache.object(forKey: cacheKey) {
+            return cachedIcon
+        }
+
+        let icon = UTType(filenameExtension: normalizedExtension).map {
+            NSWorkspace.shared.icon(for: $0)
+        } ?? NSWorkspace.shared.icon(for: .data)
+        fileIconCache.setObject(icon, forKey: cacheKey)
+        return icon
     }
 
     private func cacheKey(

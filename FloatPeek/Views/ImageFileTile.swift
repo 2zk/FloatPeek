@@ -23,26 +23,17 @@ struct ImageFileTile: View {
                 RoundedRectangle(cornerRadius: 10)
                     .fill(.quaternary)
 
-                switch thumbnailState {
-                case .loaded(let thumbnail):
-                    Image(nsImage: thumbnail)
-                        .resizable()
-                        .scaledToFit()
-                        .padding(6)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .clipped()
-                case .loading:
-                    VStack(spacing: 6) {
-                        Image(systemName: "photo")
-                            .font(.system(size: 30))
-                        ProgressView()
-                            .controlSize(.small)
-                    }
-                    .foregroundStyle(.secondary)
-                case .failed:
-                    Image(systemName: "exclamationmark.triangle")
-                        .font(.system(size: 30))
-                        .foregroundStyle(.secondary)
+                if image.presentationKind == .fileIcon {
+                    Image(
+                        nsImage: ThumbnailProvider.shared.fileIcon(
+                            forFileExtension: image.url.pathExtension
+                        )
+                    )
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 64, height: 64)
+                } else {
+                    thumbnailContent
                 }
             }
             .frame(height: thumbnailHeight)
@@ -78,7 +69,11 @@ struct ImageFileTile: View {
                 onMoveToTrash: onMoveToTrash
             )
         )
-        .task(id: ThumbnailRequest(image: image, size: thumbnailSize)) {
+        .task(id: thumbnailRequest) {
+            guard image.presentationKind == .thumbnail else {
+                return
+            }
+
             thumbnailState = .loading
 
             if let loadedThumbnail = await ThumbnailProvider.shared.thumbnail(
@@ -96,6 +91,38 @@ struct ImageFileTile: View {
                 thumbnailState = .failed
             }
         }
+    }
+
+    @ViewBuilder
+    private var thumbnailContent: some View {
+        switch thumbnailState {
+        case .loaded(let thumbnail):
+            Image(nsImage: thumbnail)
+                .resizable()
+                .scaledToFit()
+                .padding(6)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .clipped()
+        case .loading:
+            VStack(spacing: 6) {
+                Image(systemName: "photo")
+                    .font(.system(size: 30))
+                ProgressView()
+                    .controlSize(.small)
+            }
+            .foregroundStyle(.secondary)
+        case .failed:
+            Image(systemName: "exclamationmark.triangle")
+                .font(.system(size: 30))
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private var thumbnailRequest: ThumbnailRequest? {
+        guard image.presentationKind == .thumbnail else {
+            return nil
+        }
+        return ThumbnailRequest(image: image, size: thumbnailSize)
     }
 }
 

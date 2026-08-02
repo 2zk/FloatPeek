@@ -1,11 +1,22 @@
 import Foundation
 
+enum FilePresentationKind: Equatable {
+    case thumbnail
+    case fileIcon
+}
+
 struct ImageFile: Identifiable, Hashable {
     let id: URL
     let url: URL
     let fileName: String
     let addedAt: Date?
     let modifiedAt: Date?
+
+    var presentationKind: FilePresentationKind {
+        AppSettings.allThumbnailFileExtensions.contains(url.pathExtension.lowercased())
+            ? .thumbnail
+            : .fileIcon
+    }
 
     init(url: URL, addedAt: Date?, modifiedAt: Date?) {
         self.id = url

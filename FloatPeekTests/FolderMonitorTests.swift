@@ -94,7 +94,7 @@ final class FolderMonitorTests: XCTestCase {
             changeExpectation.fulfill()
         }
 
-        try createFile(named: "notes.txt")
+        try createFile(named: "notes.unsupported")
         try createFile(named: ".hidden.png")
         try Data("test".utf8).write(
             to: nestedDirectory.appendingPathComponent("nested.png")
@@ -116,6 +116,20 @@ final class FolderMonitorTests: XCTestCase {
         try createFile(named: "image.jpg")
 
         await fulfillment(of: [changeExpectation], timeout: 0.8)
+    }
+
+    func testSelectedDocumentExtensionSendsChange() async throws {
+        let changeExpectation = expectation(description: "文書ファイルの変更通知")
+        await startMonitoring(
+            folderURL: temporaryDirectory,
+            displayedFileExtensions: ["docx"]
+        ) {
+            changeExpectation.fulfill()
+        }
+
+        try createFile(named: "report.DOCX")
+
+        await fulfillment(of: [changeExpectation], timeout: 3)
     }
 
     func testStopMonitoringSuppressesChanges() async throws {

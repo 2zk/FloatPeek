@@ -149,6 +149,17 @@ final class SettingsViewModel: ObservableObject {
         errorMessage = nil
     }
 
+    func setDisplayedFileExtensions(
+        _ fileExtensions: [String],
+        isDisplayed: Bool
+    ) {
+        if isDisplayed {
+            displayedFileExtensions.formUnion(fileExtensions)
+        } else {
+            displayedFileExtensions.subtract(fileExtensions)
+        }
+    }
+
     func reloadCurrentTab() {
         guard canReloadCurrentTab else {
             return

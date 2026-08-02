@@ -1,18 +1,18 @@
 # FloatPeek
 
-FloatPeek is a lightweight macOS image and PDF browser that opens with a global keyboard shortcut.
+FloatPeek is a lightweight macOS file browser that opens with a global keyboard shortcut.
 
 [日本語](#日本語) | [English](#english)
 
 ## 日本語
 
-FloatPeek は、よく使う画像フォルダを小さなフローティングウィンドウで素早く確認するための macOS アプリです。グローバルショートカットで表示・非表示を切り替え、ファイルのプレビュー、コピー、共有、整理を手軽に行えます。
+FloatPeek は、よく使うフォルダを小さなフローティングウィンドウで素早く確認するための macOS アプリです。グローバルショートカットで表示・非表示を切り替え、ファイルのプレビュー、コピー、共有、整理を手軽に行えます。
 
 ### 主な機能
 
 - グローバルショートカットによるウィンドウの表示・非表示
 - 複数フォルダの登録、並び替え、切り替え
-- 画像と PDF のサムネイル表示
+- 画像と PDF のサムネイル、一般文書のファイルアイコン表示
 - 表示するファイル拡張子の選択
 - ファイル名、変更日、追加日による並び替え
 - 単一選択、複数選択、範囲選択
@@ -30,7 +30,8 @@ FloatPeek は、よく使う画像フォルダを小さなフローティング�
 
 - Apple Silicon（M1以降）
 - macOS 14 Sonoma 以降
-- 対応形式: `jpg`、`jpeg`、`png`、`gif`、`heic`、`pdf`
+- サムネイル表示: `jpg`、`jpeg`、`png`、`gif`、`heic`、`webp`、`tif`、`tiff`、`bmp`、`svg`、`pdf`
+- アイコン表示: `txt`、`md`、`csv`、`rtf`、`doc`、`docx`、`xls`、`xlsx`、`ppt`、`pptx`
 
 選択したフォルダ直下のファイルだけを表示します。隠しファイルとサブフォルダ内のファイルは表示しません。
 
@@ -84,12 +85,12 @@ v1.xからv2.0.0へ移行するときは、上記の`brew upgrade`またはGitHu
 - フォルダの追加、削除、名前変更、表示順
 - 起動時に選択するフォルダ
 - 現在のフォルダの手動再読み込み
-- ウィンドウ幅に合わせた画像拡大の有効・無効
+- ウィンドウ幅に合わせた画像・PDF拡大の有効・無効
 - 表示対象の拡張子
 - 表示言語（システム設定、英語、日本語）
 - グローバルショートカット
 
-表示対象の拡張子は初期状態ですべて選択されています。設定変更は `保存` をクリックしたときだけ反映され、`キャンセル` すると破棄されます。
+画像・PDFの拡張子は初期状態で選択され、一般文書の拡張子は選択されていません。設定変更は `保存` をクリックしたときだけ反映され、`キャンセル` すると破棄されます。
 
 ### ファイルの選択と操作
 
@@ -132,13 +133,13 @@ v1.xからv2.0.0へ移行するときは、上記の`brew upgrade`またはGitHu
 
 ## English
 
-FloatPeek is a macOS app for quickly browsing frequently used image folders in a small floating window. Show or hide it with a global shortcut, then preview, copy, share, or organize files without switching to Finder.
+FloatPeek is a macOS app for quickly browsing frequently used folders in a small floating window. Show or hide it with a global shortcut, then preview, copy, share, or organize files without switching to Finder.
 
 ### Features
 
 - Show or hide the window with a global keyboard shortcut
 - Register, reorder, and switch between multiple folders
-- Display thumbnails for images and PDFs
+- Display thumbnails for images and PDFs and file icons for common documents
 - Choose which file extensions to display
 - Sort by file name, date modified, or date added
 - Single, multiple, and range selection
@@ -156,7 +157,8 @@ FloatPeek is a macOS app for quickly browsing frequently used image folders in a
 
 - Apple Silicon (M1 or later)
 - macOS 14 Sonoma or later
-- Supported formats: `jpg`, `jpeg`, `png`, `gif`, `heic`, `pdf`
+- Thumbnail formats: `jpg`, `jpeg`, `png`, `gif`, `heic`, `webp`, `tif`, `tiff`, `bmp`, `svg`, `pdf`
+- File-icon formats: `txt`, `md`, `csv`, `rtf`, `doc`, `docx`, `xls`, `xlsx`, `ppt`, `pptx`
 
 FloatPeek displays files directly inside the selected folder. Hidden files and files in subfolders are not included.
 
@@ -210,12 +212,12 @@ The Settings window provides:
 - Folder creation, removal, naming, and reordering
 - Selection of the folder shown at launch
 - Manual reload of the current folder
-- Image scaling with the window width
+- Image and PDF scaling with the window width
 - Displayed file extensions
 - Language selection: System Default, English, or Japanese
 - Global shortcut recording
 
-All supported extensions are selected initially. Changes take effect only after clicking `Save`; clicking `Cancel` discards them.
+Image and PDF extensions are selected initially; common document extensions are off. Changes take effect only after clicking `Save`; clicking `Cancel` discards them.
 
 ### File selection and actions
 

@@ -15,11 +15,11 @@
 "OK" = "OK";
 "Loading…" = "Loading…";
 "No folder selected" = "No folder selected";
-"Choose a folder to show image or PDF files." = "Choose a folder to show image or PDF files.";
+"Choose a folder to show files." = "Choose a folder to show files.";
 "Cannot access folder" = "Cannot access folder";
 "Choose another folder." = "Choose another folder.";
 "No supported files found" = "No supported files found";
-"Supported formats: jpg, jpeg, png, gif, heic, pdf." = "Supported formats: jpg, jpeg, png, gif, heic, pdf.";
+"Enable file extensions in Settings or choose another folder." = "Enable file extensions in Settings or choose another folder.";
 "Selected:" = "Selected:";
 "None" = "None";
 "%d files" = "%d files";
@@ -31,8 +31,12 @@
 "Date Modified" = "Date Modified";
 "File Name" = "File Name";
 "Display" = "Display";
-"Scale images with window width" = "Scale images with window width";
+"Scale images and PDFs with window width" = "Scale images and PDFs with window width";
 "Displayed File Extensions" = "Displayed File Extensions";
+"Images and PDFs" = "Images and PDFs";
+"Other Files" = "Other Files";
+"Select All" = "Select All";
+"Deselect All" = "Deselect All";
 "Quick Look Background" = "Quick Look Background";
 "Background Color" = "Background Color";
 "Language" = "Language";
@@ -58,7 +62,7 @@
 "%@ could not be moved to the Trash.\n%@" = "%@ could not be moved to the Trash.\n%@";
 "%d files could not be moved to the Trash.\n%@" = "%d files could not be moved to the Trash.\n%@";
 "Choose" = "Choose";
-"Choose an image folder for FloatPeek." = "Choose an image folder for FloatPeek.";
+"Choose a folder for FloatPeek." = "Choose a folder for FloatPeek.";
 "Space" = "Space";
 "Return" = "Return";
 "Tab" = "Tab";

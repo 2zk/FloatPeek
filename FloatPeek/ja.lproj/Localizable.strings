@@ -15,11 +15,11 @@
 "OK" = "OK";
 "Loading…" = "読み込み中…";
 "No folder selected" = "フォルダが選択されていません";
-"Choose a folder to show image or PDF files." = "画像またはPDFファイルを表示するフォルダを選択してください。";
+"Choose a folder to show files." = "ファイルを表示するフォルダを選択してください。";
 "Cannot access folder" = "フォルダにアクセスできません";
 "Choose another folder." = "別のフォルダを選択してください。";
 "No supported files found" = "対応ファイルが見つかりません";
-"Supported formats: jpg, jpeg, png, gif, heic, pdf." = "対応形式: jpg、jpeg、png、gif、heic、pdf";
+"Enable file extensions in Settings or choose another folder." = "設定でファイル拡張子を有効にするか、別のフォルダを選択してください。";
 "Selected:" = "選択中:";
 "None" = "なし";
 "%d files" = "%d個のファイル";
@@ -31,8 +31,12 @@
 "Date Modified" = "変更日";
 "File Name" = "ファイル名";
 "Display" = "表示";
-"Scale images with window width" = "ウィンドウ幅に合わせて画像を拡大";
+"Scale images and PDFs with window width" = "ウィンドウ幅に合わせて画像・PDFを拡大";
 "Displayed File Extensions" = "表示するファイル拡張子";
+"Images and PDFs" = "画像・PDF";
+"Other Files" = "その他のファイル";
+"Select All" = "すべて選択";
+"Deselect All" = "すべて解除";
 "Quick Look Background" = "クイックルックの背景";
 "Background Color" = "背景色";
 "Language" = "言語";
@@ -58,7 +62,7 @@
 "%@ could not be moved to the Trash.\n%@" = "%@ をゴミ箱に移動できませんでした。\n%@";
 "%d files could not be moved to the Trash.\n%@" = "%d個のファイルをゴミ箱に移動できませんでした。\n%@";
 "Choose" = "選択";
-"Choose an image folder for FloatPeek." = "FloatPeekで表示する画像フォルダを選択してください。";
+"Choose a folder for FloatPeek." = "FloatPeekで表示するフォルダを選択してください。";
 "Space" = "スペース";
 "Return" = "リターン";
 "Tab" = "タブ";

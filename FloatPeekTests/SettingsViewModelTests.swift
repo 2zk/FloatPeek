@@ -13,17 +13,84 @@ final class SettingsViewModelTests: XCTestCase {
         XCTAssertFalse(AppSettings.loadScaleImagesWithWindow(from: preferences))
     }
 
-    func testDisplayedFileExtensionsDefaultToAllAndPersistEmptySelection() {
+    func testDisplayedFileExtensionsDefaultToThumbnailsAndPersistEmptySelection() {
         let preferences = InMemoryPreferences()
 
         XCTAssertEqual(
             AppSettings.loadDisplayedFileExtensions(from: preferences),
-            AppSettings.allSupportedFileExtensions
+            AppSettings.defaultDisplayedFileExtensions
+        )
+        XCTAssertTrue(
+            AppSettings.defaultDisplayedFileExtensions
+                .isDisjoint(with: AppSettings.allIconFileExtensions)
         )
 
         AppSettings.saveDisplayedFileExtensions([], to: preferences)
 
         XCTAssertEqual(AppSettings.loadDisplayedFileExtensions(from: preferences), [])
+    }
+
+    func testLegacyDisplayedExtensionsAddNewThumbnailsOnce() {
+        let preferences = InMemoryPreferences()
+        preferences.set(
+            ["png", "txt"],
+            forKey: AppSettings.displayedFileExtensionsKey
+        )
+
+        XCTAssertEqual(
+            AppSettings.loadDisplayedFileExtensions(from: preferences),
+            ["png", "txt", "webp", "tif", "tiff", "bmp", "svg"]
+        )
+
+        AppSettings.saveDisplayedFileExtensions(["png", "txt"], to: preferences)
+
+        XCTAssertEqual(
+            AppSettings.loadDisplayedFileExtensions(from: preferences),
+            ["png", "txt"]
+        )
+    }
+
+    func testLegacyEmptySelectionAddsOnlyNewThumbnails() {
+        let preferences = InMemoryPreferences()
+        preferences.set([], forKey: AppSettings.displayedFileExtensionsKey)
+
+        XCTAssertEqual(
+            AppSettings.loadDisplayedFileExtensions(from: preferences),
+            ["webp", "tif", "tiff", "bmp", "svg"]
+        )
+    }
+
+    func testBulkFileExtensionSelectionChangesOnlyTargetGroup() {
+        let context = makeContext()
+        context.viewModel.displayedFileExtensions = ["txt"]
+
+        context.viewModel.setDisplayedFileExtensions(
+            AppSettings.thumbnailFileExtensions,
+            isDisplayed: true
+        )
+
+        XCTAssertEqual(
+            context.viewModel.displayedFileExtensions,
+            AppSettings.allThumbnailFileExtensions.union(["txt"])
+        )
+
+        context.viewModel.setDisplayedFileExtensions(
+            AppSettings.thumbnailFileExtensions,
+            isDisplayed: false
+        )
+
+        XCTAssertEqual(context.viewModel.displayedFileExtensions, ["txt"])
+
+        context.viewModel.setDisplayedFileExtensions(
+            AppSettings.iconFileExtensions,
+            isDisplayed: false
+        )
+
+        XCTAssertEqual(context.viewModel.displayedFileExtensions, [])
+        XCTAssertEqual(
+            AppSettings.loadDisplayedFileExtensions(from: context.preferences),
+            AppSettings.defaultDisplayedFileExtensions
+        )
     }
 
     func testQuickLookBackgroundColorDefaultsAndPersists() {
@@ -174,7 +241,7 @@ final class SettingsViewModelTests: XCTestCase {
         XCTAssertTrue(AppSettings.loadScaleImagesWithWindow(from: context.preferences))
         XCTAssertEqual(
             AppSettings.loadDisplayedFileExtensions(from: context.preferences),
-            AppSettings.allSupportedFileExtensions
+            AppSettings.defaultDisplayedFileExtensions
         )
         XCTAssertEqual(
             AppSettings.loadQuickLookBackgroundColor(from: context.preferences),
@@ -207,7 +274,7 @@ final class SettingsViewModelTests: XCTestCase {
         XCTAssertTrue(AppSettings.loadScaleImagesWithWindow(from: context.preferences))
         XCTAssertEqual(
             AppSettings.loadDisplayedFileExtensions(from: context.preferences),
-            AppSettings.allSupportedFileExtensions
+            AppSettings.defaultDisplayedFileExtensions
         )
         XCTAssertEqual(
             AppSettings.loadQuickLookBackgroundColor(from: context.preferences),
