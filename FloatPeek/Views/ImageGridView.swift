@@ -12,7 +12,7 @@ struct ImageGridView: View {
     let images: [ImageFile]
     let selectedImageIDs: Set<ImageFile.ID>
     let selectedImages: [ImageFile]
-    let selectedImageID: ImageFile.ID?
+    let scrollTargetImageID: ImageFile.ID?
     let columnCount: Int
     let scaleImagesWithWindow: Bool
     let availableWidth: CGFloat
@@ -63,12 +63,12 @@ struct ImageGridView: View {
                 .padding(Self.horizontalPadding)
                 .frame(maxWidth: .infinity, alignment: .center)
             }
-            .onChange(of: selectedImageID) { _, selectedImageID in
-                guard let selectedImageID else {
+            .onChange(of: scrollTargetImageID) { _, scrollTargetImageID in
+                guard let scrollTargetImageID else {
                     return
                 }
 
-                proxy.scrollTo(selectedImageID, anchor: .center)
+                proxy.scrollTo(scrollTargetImageID, anchor: .center)
             }
         }
     }

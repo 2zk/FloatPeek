@@ -290,6 +290,7 @@ The context menu can open or preview files, copy files or paths, reveal files in
 | Extend or contract the selection range | `Shift` + Arrow keys |
 | Show or hide Quick Look | `Space` |
 | Open with the default app | `Return` |
+| Select all displayed files | `Control` + `A` / `⌘A` |
 | Copy selected files | `⌘C` |
 | Move selected files to Trash | `Delete` / `Forward Delete` |
 | Hide the window | `Escape` |

@@ -12,6 +12,7 @@ struct ContentView: View {
     @EnvironmentObject private var updateManager: UpdateManager
     @State private var gridColumnCount = 1
     @State private var scaleImagesWithWindow = AppSettings.loadScaleImagesWithWindow()
+    @State private var scrollTargetImageID: ImageFile.ID?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -35,11 +36,12 @@ struct ContentView: View {
                             images: viewModel.images,
                             selectedImageIDs: viewModel.selectedImageIDs,
                             selectedImages: viewModel.selectedImages,
-                            selectedImageID: viewModel.selectedImage?.id,
+                            scrollTargetImageID: scrollTargetImageID,
                             columnCount: displayedGridColumnCount,
                             scaleImagesWithWindow: scaleImagesWithWindow,
                             availableWidth: geometry.size.width,
                             onSelect: { image, mode in
+                                scrollTargetImageID = nil
                                 viewModel.selectImage(image, mode: mode)
                             },
                             onOpen: viewModel.openImage,
@@ -189,29 +191,39 @@ struct ContentView: View {
         case .space:
             return previewSelectedImage()
         case .leftArrow(let extendingSelection):
-            return viewModel.moveSelection(
+            let didMove = viewModel.moveSelection(
                 .left,
                 columnCount: displayedGridColumnCount,
                 extendingSelection: extendingSelection
             )
+            updateScrollTargetAfterKeyboardSelection(didMove)
+            return didMove
         case .rightArrow(let extendingSelection):
-            return viewModel.moveSelection(
+            let didMove = viewModel.moveSelection(
                 .right,
                 columnCount: displayedGridColumnCount,
                 extendingSelection: extendingSelection
             )
+            updateScrollTargetAfterKeyboardSelection(didMove)
+            return didMove
         case .upArrow(let extendingSelection):
-            return viewModel.moveSelection(
+            let didMove = viewModel.moveSelection(
                 .up,
                 columnCount: displayedGridColumnCount,
                 extendingSelection: extendingSelection
             )
+            updateScrollTargetAfterKeyboardSelection(didMove)
+            return didMove
         case .downArrow(let extendingSelection):
-            return viewModel.moveSelection(
+            let didMove = viewModel.moveSelection(
                 .down,
                 columnCount: displayedGridColumnCount,
                 extendingSelection: extendingSelection
             )
+            updateScrollTargetAfterKeyboardSelection(didMove)
+            return didMove
+        case .selectAll:
+            return viewModel.selectAllImages()
         case .copy:
             return viewModel.copySelectedImages()
         case .moveToTrash:
@@ -230,6 +242,14 @@ struct ContentView: View {
         }
 
         return QuickLookManager.shared.togglePreview(fileURL: selectedImage.url)
+    }
+
+    private func updateScrollTargetAfterKeyboardSelection(_ didMove: Bool) {
+        guard didMove else {
+            return
+        }
+
+        scrollTargetImageID = viewModel.selectedImage?.id
     }
 
     @discardableResult

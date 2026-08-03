@@ -100,6 +100,20 @@ struct ImageSelection {
         }
     }
 
+    @discardableResult
+    mutating func selectAll(orderedIDs: [ImageFile.ID]) -> Bool {
+        guard !orderedIDs.isEmpty else {
+            return false
+        }
+
+        selectedIDs = Set(orderedIDs)
+        if focusedID.map({ selectedIDs.contains($0) }) != true {
+            focusedID = orderedIDs[0]
+        }
+        anchorID = focusedID
+        return true
+    }
+
     private mutating func replace(with id: ImageFile.ID) {
         focusedID = id
         selectedIDs = [id]

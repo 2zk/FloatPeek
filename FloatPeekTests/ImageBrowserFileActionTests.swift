@@ -79,6 +79,26 @@ final class ImageBrowserFileActionTests: XCTestCase {
         XCTAssertNil(HandledKey(event: plainC))
     }
 
+    func testControlAndCommandAAreHandledAsSelectAllShortcuts() throws {
+        for modifiers: NSEvent.ModifierFlags in [.control, .command] {
+            let selectAll = try XCTUnwrap(
+                makeKeyEvent(modifierFlags: modifiers, keyCode: 0)
+            )
+            guard case .selectAll = HandledKey(event: selectAll) else {
+                return XCTFail("Control または Command + A が全選択として認識されない")
+            }
+        }
+    }
+
+    func testSelectAllImagesSelectsEveryDisplayedFile() throws {
+        let focusedImage = try image(named: "second.png")
+        viewModel.selectImage(focusedImage)
+
+        XCTAssertTrue(viewModel.selectAllImages())
+        XCTAssertEqual(viewModel.selectedImageIDs, Set(viewModel.images.map(\.id)))
+        XCTAssertEqual(viewModel.selectedImage?.id, focusedImage.id)
+    }
+
     func testDeleteKeysAreHandledWithoutModifiersOrKeyRepeat() throws {
         for keyCode: UInt16 in [51, 117] {
             let deleteKey = try XCTUnwrap(

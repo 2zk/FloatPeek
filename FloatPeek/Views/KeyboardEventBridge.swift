@@ -70,6 +70,7 @@ enum HandledKey: Sendable {
     case rightArrow(extendingSelection: Bool)
     case upArrow(extendingSelection: Bool)
     case downArrow(extendingSelection: Bool)
+    case selectAll
     case copy
     case moveToTrash
     case selectNextTab
@@ -93,6 +94,8 @@ enum HandledKey: Sendable {
             self = .downArrow(extendingSelection: modifiers.contains(.shift))
         case 126:
             self = .upArrow(extendingSelection: modifiers.contains(.shift))
+        case 0 where modifiers == .command || modifiers == .control:
+            self = .selectAll
         case 8 where modifiers == .command:
             self = .copy
         case 48 where modifiers == .control:

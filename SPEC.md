@@ -497,6 +497,7 @@ Actions:
 | `Space` | Quick Look 表示・非表示 |
 | `Escape` | ウィンドウを非表示 |
 | `Return` / テンキー `Enter` | 主選択を既定アプリで開く |
+| `Control+A` / `Command+A` | 表示中の全ファイルを選択 |
 | `Command+C` | 選択中ファイルをコピー |
 | `Delete` / `Forward Delete` | 選択中ファイルをゴミ箱へ移動 |
 | 矢印キー | 主選択を移動 |

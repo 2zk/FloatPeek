@@ -177,6 +177,15 @@ final class ImageBrowserViewModel: ObservableObject {
         selectionRevision += 1
     }
 
+    @discardableResult
+    func selectAllImages() -> Bool {
+        let didSelect = selection.selectAll(orderedIDs: images.map(\.id))
+        if didSelect {
+            selectionRevision += 1
+        }
+        return didSelect
+    }
+
     func setSortOption(_ sortOption: FileSortOption) {
         guard self.sortOption != sortOption else {
             return
