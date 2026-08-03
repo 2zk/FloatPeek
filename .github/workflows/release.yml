@@ -93,6 +93,9 @@ jobs:
           BUILD_NUMBER: ${{ github.run_number }}
         run: ./Scripts/build-release.sh "$VERSION"
 
+      - name: 手動インストール用DMGを作成
+        run: ./Scripts/build-installer.sh "$VERSION"
+
       - name: リリースノートを生成
         env:
           GH_TOKEN: ${{ github.token }}
@@ -151,6 +154,8 @@ jobs:
 
           archive="dist/FloatPeek-$VERSION.zip"
           checksum="$archive.sha256"
+          installer="dist/FloatPeek-$VERSION.dmg"
+          installer_checksum="$installer.sha256"
           release_notes="dist/FloatPeek-$VERSION.md"
           appcast="dist/appcast.xml"
 
@@ -158,6 +163,8 @@ jobs:
             "$GITHUB_REF_NAME" \
             "$archive" \
             "$checksum" \
+            "$installer" \
+            "$installer_checksum" \
             "$release_notes" \
             "$appcast" \
             --clobber
@@ -165,6 +172,8 @@ jobs:
           expected_assets=(
             "FloatPeek-$VERSION.zip"
             "FloatPeek-$VERSION.zip.sha256"
+            "FloatPeek-$VERSION.dmg"
+            "FloatPeek-$VERSION.dmg.sha256"
             "FloatPeek-$VERSION.md"
             "appcast.xml"
           )

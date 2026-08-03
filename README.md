@@ -51,7 +51,9 @@ v2.0.0以降はIntel Macに対応しません。Intel Mac向けの最終版はv1
 
 ### インストール
 
-Homebrew でインストールします。
+HomebrewまたはGitHub Releasesからインストールできます。
+
+#### Homebrew
 
 ```sh
 brew install --cask 2zk/tap/floatpeek
@@ -63,6 +65,14 @@ brew install --cask 2zk/tap/floatpeek
 brew upgrade --cask floatpeek
 brew uninstall --cask floatpeek
 ```
+
+#### GitHubから手動インストール
+
+1. [最新のGitHub Release](https://github.com/2zk/FloatPeek/releases/latest)から`FloatPeek-X.Y.Z.dmg`をダウンロードします。
+2. DMGを開き、`FloatPeek.app`を`Applications`へドラッグします。
+3. DMGを取り出し、アプリケーションフォルダからFloatPeekを起動します。
+
+手動インストール後も、FloatPeekの設定画面から更新を確認できます。DMGと同じReleaseにはSHA-256 checksumも公開されます。
 
 v1.xからv2.0.0へ移行するときは、上記の`brew upgrade`またはGitHub Releaseからの再インストールが一度だけ必要です。v2.0.0以降は初期設定で毎週更新を自動確認し、設定画面から毎日・毎週・毎月を選択できます。利用者が承認した場合だけインストールして再起動します。手動確認も設定画面から実行できます。
 
@@ -190,7 +200,9 @@ Version 2.0.0 and later do not support Intel Macs. Version 1.3.0 is the final In
 
 ### Installation
 
-Install FloatPeek with Homebrew:
+Install FloatPeek with Homebrew or download it from GitHub Releases.
+
+#### Homebrew
 
 ```sh
 brew install --cask 2zk/tap/floatpeek
@@ -202,6 +214,14 @@ To upgrade or uninstall:
 brew upgrade --cask floatpeek
 brew uninstall --cask floatpeek
 ```
+
+#### Manual installation from GitHub
+
+1. Download `FloatPeek-X.Y.Z.dmg` from the [latest GitHub Release](https://github.com/2zk/FloatPeek/releases/latest).
+2. Open the DMG and drag `FloatPeek.app` to `Applications`.
+3. Eject the DMG and launch FloatPeek from the Applications folder.
+
+After a manual installation, you can still check for updates from FloatPeek's Settings window. A SHA-256 checksum is published alongside the DMG in the same release.
 
 Moving from v1.x to v2.0.0 requires one manual `brew upgrade` or reinstall from GitHub Releases. Starting with v2.0.0, FloatPeek checks for updates every 24 hours and installs only after approval. You can also check manually from the Settings window.
 

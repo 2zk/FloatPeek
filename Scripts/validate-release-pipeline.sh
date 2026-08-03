@@ -39,8 +39,13 @@ BUILD_NUMBER="$validation_build_number" \
     "$validation_version" \
     "$output_directory"
 
+"$script_directory/build-installer.sh" \
+  "$validation_version" \
+  "$output_directory"
+
 archive_name="$FLOATPEEK_APP_NAME-$validation_version.zip"
 archive_path="$output_directory/$archive_name"
+installer_name="$FLOATPEEK_APP_NAME-$validation_version.dmg"
 release_notes_path="$output_directory/$FLOATPEEK_APP_NAME-$validation_version.md"
 
 printf '# %s %s\n\nRelease pipeline validation.\n' \
@@ -59,6 +64,7 @@ BUILD_NUMBER="$validation_build_number" \
 (
   cd "$output_directory"
   shasum -a 256 -c "$archive_name.sha256"
+  shasum -a 256 -c "$installer_name.sha256"
 )
 
 GIT_AUTHOR_NAME="FloatPeek CI" \

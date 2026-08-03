@@ -70,7 +70,7 @@ xcodebuild test \
 
 - Release Workflowの3ジョブが成功している。
 - GitHub Releaseがドラフトでもprereleaseでもなく公開済みである。
-- `FloatPeek-X.Y.Z.zip`、SHA-256、リリースノート、`appcast.xml` の4アセットが存在する。
+- `FloatPeek-X.Y.Z.zip`、`FloatPeek-X.Y.Z.dmg`、それぞれのSHA-256、リリースノート、`appcast.xml` の6アセットが存在する。
 - Homebrew Tapの `Casks/floatpeek.rb` が対象バージョン、公開ZIPのSHA-256、`depends_on arch: :arm64`、`auto_updates true` を含む。
 - `https://github.com/2zk/FloatPeek/releases/latest/download/appcast.xml` が新しいReleaseを指す。
 - ローカルmain、`origin/main`、公開タグが同じコミットを指し、作業ツリーに未処理差分がない。

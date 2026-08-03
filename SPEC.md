@@ -816,6 +816,8 @@ FloatPeekはApple Developer Programへ加入せずに開発・配布する。リ
 ```text
 dist/FloatPeek-X.Y.Z.zip
 dist/FloatPeek-X.Y.Z.zip.sha256
+dist/FloatPeek-X.Y.Z.dmg
+dist/FloatPeek-X.Y.Z.dmg.sha256
 dist/FloatPeek-X.Y.Z.md
 dist/appcast.xml
 ```
@@ -840,6 +842,8 @@ v2.0.0以降の配布アプリに含まれるすべてのMach-Oバイナリはar
 
 既存の同名 ZIP または checksum は上書きしない。
 
+`Scripts/build-installer.sh`は配布ZIPから、`FloatPeek.app`と`Applications`へのショートカットを収録した手動インストール用DMGを生成する。DMGと、そのファイル名だけを含むポータブルなSHA-256ファイルは既存の同名ファイルを上書きしない。
+
 Sparkle EdDSA公開鍵は秘密情報ではないため、Xcodeプロジェクトのbuild settingとしてリポジトリ管理する。テスト用の使い捨て鍵などへ一時的に差し替える場合だけ、環境変数で指定する。
 
 ```sh
@@ -857,7 +861,7 @@ SPARKLE_PUBLIC_ED_KEY="<公開鍵>" ./Scripts/build-release.sh 2.0.0
 ワークフロー:
 
 1. `validate`: タグ形式とSecret、シェルスクリプト、全テスト、使い捨て鍵によるリリースパイプラインを検証
-2. `publish`: arm64・ad-hoc署名のアプリ、ZIP、EdDSA署名済みappcast、リリースノートを生成
+2. `publish`: arm64・ad-hoc署名のアプリ、ZIP、手動インストール用DMG、EdDSA署名済みappcast、リリースノートを生成
 3. `publish`: GitHub Releaseをドラフトで作り、全アセット確認後に公開
 4. `update-homebrew`: 公開済みchecksumからHomebrew Caskを生成・検証
 5. `update-homebrew`: `2zk/homebrew-tap`の`Casks/floatpeek.rb`を更新
@@ -917,7 +921,7 @@ git push origin v2.0.0
 確認項目:
 
 - `Release` workflow が成功
-- GitHub Release に ZIP、checksum、appcast、リリースノートが存在
+- GitHub Release に ZIP、DMG、それぞれのchecksum、appcast、リリースノートが存在
 - Homebrew Tap の Cask が更新
 - `brew install --cask 2zk/tap/floatpeek` が成功
 
