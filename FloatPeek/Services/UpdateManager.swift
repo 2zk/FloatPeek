@@ -147,11 +147,18 @@ final class SparkleUpdateDriver: UpdateDriving {
 
 @MainActor
 final class SparkleUpdateLifecycleDelegate: NSObject, SPUUpdaterDelegate {
+    private let dismissSettings: () -> Void
     private let requestApplicationTermination: () -> Void
 
-    init(requestApplicationTermination: @escaping () -> Void = {
-        NSApp.terminate(nil)
-    }) {
+    init(
+        dismissSettings: @escaping () -> Void = {
+            AppCoordinator.shared.dismissSettings()
+        },
+        requestApplicationTermination: @escaping () -> Void = {
+            NSApp.terminate(nil)
+        }
+    ) {
+        self.dismissSettings = dismissSettings
         self.requestApplicationTermination = requestApplicationTermination
     }
 
@@ -160,7 +167,10 @@ final class SparkleUpdateLifecycleDelegate: NSObject, SPUUpdaterDelegate {
     }
 
     func requestTerminationForRelaunch() {
-        requestApplicationTermination()
+        dismissSettings()
+        DispatchQueue.main.async { [weak self] in
+            self?.requestApplicationTermination()
+        }
     }
 }
 

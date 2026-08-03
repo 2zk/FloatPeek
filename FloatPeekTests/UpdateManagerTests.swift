@@ -77,15 +77,23 @@ final class UpdateManagerTests: XCTestCase {
         XCTAssertEqual(manager.lastUpdateCheckDate, date)
     }
 
-    func testUpdateRelaunchRequestsApplicationTermination() {
-        var terminationRequestCount = 0
-        let delegate = SparkleUpdateLifecycleDelegate {
-            terminationRequestCount += 1
-        }
+    func testUpdateRelaunchDismissesSettingsBeforeRequestingApplicationTermination() async {
+        var events: [String] = []
+        let terminationRequest = expectation(description: "アプリ終了を要求する")
+        let delegate = SparkleUpdateLifecycleDelegate(
+            dismissSettings: {
+                events.append("dismiss settings")
+            },
+            requestApplicationTermination: {
+                events.append("request termination")
+                terminationRequest.fulfill()
+            }
+        )
 
         delegate.requestTerminationForRelaunch()
+        await fulfillment(of: [terminationRequest], timeout: 1)
 
-        XCTAssertEqual(terminationRequestCount, 1)
+        XCTAssertEqual(events, ["dismiss settings", "request termination"])
     }
 
     func testAppBundleUsesApprovalRequiredUpdateConfiguration() {

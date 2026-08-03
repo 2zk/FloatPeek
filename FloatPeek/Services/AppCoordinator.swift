@@ -12,6 +12,10 @@ final class AppCoordinator: ObservableObject {
         isShowingSettings = true
     }
 
+    func dismissSettings() {
+        isShowingSettings = false
+    }
+
     func windowBecameVisible() {
         windowVisibleRevision += 1
     }

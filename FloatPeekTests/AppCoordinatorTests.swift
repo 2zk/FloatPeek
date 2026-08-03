@@ -11,6 +11,15 @@ final class AppCoordinatorTests: XCTestCase {
         XCTAssertTrue(coordinator.isShowingSettings)
     }
 
+    func testDismissingSettingsClearsPresentationState() {
+        let coordinator = AppCoordinator()
+        coordinator.requestSettings()
+
+        coordinator.dismissSettings()
+
+        XCTAssertFalse(coordinator.isShowingSettings)
+    }
+
     func testRepeatedVisibilityChangesProduceDistinctRevisions() {
         let coordinator = AppCoordinator()
 
