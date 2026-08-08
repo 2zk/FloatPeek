@@ -4,6 +4,7 @@ import SwiftUI
 struct ImageFileTile: View {
     let image: ImageFile
     let isSelected: Bool
+    let isRenaming: Bool
     let selectedDragURLs: [URL]
     let thumbnailHeight: CGFloat
     let thumbnailSize: CGSize
@@ -14,8 +15,47 @@ struct ImageFileTile: View {
     let onRevealInFinder: () -> Void
     let onCopyPath: () -> Void
     let onMoveToTrash: () -> Void
+    let onRename: (String) -> Void
+    let onCancelRename: () -> Void
 
     @State private var thumbnailState: ThumbnailState = .loading
+    @State private var renameDraft: String
+    @FocusState private var isRenameFieldFocused: Bool
+
+    init(
+        image: ImageFile,
+        isSelected: Bool,
+        isRenaming: Bool,
+        selectedDragURLs: [URL],
+        thumbnailHeight: CGFloat,
+        thumbnailSize: CGSize,
+        onSelect: @escaping (ImageBrowserViewModel.SelectionMode) -> Void,
+        onOpen: @escaping () -> Void,
+        onPreview: @escaping () -> Void,
+        onCopy: @escaping () -> Void,
+        onRevealInFinder: @escaping () -> Void,
+        onCopyPath: @escaping () -> Void,
+        onMoveToTrash: @escaping () -> Void,
+        onRename: @escaping (String) -> Void,
+        onCancelRename: @escaping () -> Void
+    ) {
+        self.image = image
+        self.isSelected = isSelected
+        self.isRenaming = isRenaming
+        self.selectedDragURLs = selectedDragURLs
+        self.thumbnailHeight = thumbnailHeight
+        self.thumbnailSize = thumbnailSize
+        self.onSelect = onSelect
+        self.onOpen = onOpen
+        self.onPreview = onPreview
+        self.onCopy = onCopy
+        self.onRevealInFinder = onRevealInFinder
+        self.onCopyPath = onCopyPath
+        self.onMoveToTrash = onMoveToTrash
+        self.onRename = onRename
+        self.onCancelRename = onCancelRename
+        _renameDraft = State(initialValue: image.url.deletingPathExtension().lastPathComponent)
+    }
 
     var body: some View {
         VStack(spacing: 6) {
@@ -39,11 +79,7 @@ struct ImageFileTile: View {
             .frame(height: thumbnailHeight)
             .clipShape(RoundedRectangle(cornerRadius: 10))
 
-            Text(image.fileName)
-                .font(.caption)
-                .lineLimit(2)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: .infinity, minHeight: 30, alignment: .top)
+            fileNameContent
         }
         .padding(6)
         .background(
@@ -68,6 +104,7 @@ struct ImageFileTile: View {
                 onCopyPath: onCopyPath,
                 onMoveToTrash: onMoveToTrash
             )
+            .allowsHitTesting(!isRenaming)
         )
         .task(id: thumbnailRequest) {
             guard image.presentationKind == .thumbnail else {
@@ -90,6 +127,58 @@ struct ImageFileTile: View {
                 }
                 thumbnailState = .failed
             }
+        }
+        .onChange(of: isRenaming) { _, isRenaming in
+            guard isRenaming else {
+                return
+            }
+
+            renameDraft = image.url.deletingPathExtension().lastPathComponent
+            focusRenameField()
+        }
+    }
+
+    @ViewBuilder
+    private var fileNameContent: some View {
+        if isRenaming {
+            HStack(spacing: 0) {
+                TextField("", text: $renameDraft)
+                    .textFieldStyle(.roundedBorder)
+                    .focused($isRenameFieldFocused)
+                    .onSubmit {
+                        onRename(renameDraft)
+                    }
+                    .onExitCommand {
+                        onCancelRename()
+                    }
+
+                if !image.url.pathExtension.isEmpty {
+                    Text(".\(image.url.pathExtension)")
+                }
+            }
+            .font(.caption)
+            .frame(maxWidth: .infinity, minHeight: 30, alignment: .top)
+            .onAppear {
+                focusRenameField()
+            }
+            .onChange(of: isRenameFieldFocused) { wasFocused, isFocused in
+                if wasFocused, !isFocused, isRenaming {
+                    onRename(renameDraft)
+                }
+            }
+        } else {
+            Text(image.fileName)
+                .font(.caption)
+                .lineLimit(2)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity, minHeight: 30, alignment: .top)
+        }
+    }
+
+    private func focusRenameField() {
+        isRenameFieldFocused = true
+        DispatchQueue.main.async {
+            NSApp.sendAction(#selector(NSText.selectAll(_:)), to: nil, from: nil)
         }
     }
 

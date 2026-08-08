@@ -60,6 +60,11 @@
 "Reveal in Finder" = "Reveal in Finder";
 "Move to Trash" = "Move to Trash";
 "Could not Move to Trash" = "Could not Move to Trash";
+"Could not Rename File" = "Could not Rename File";
+"%@ could not be renamed.\n%@" = "%@ could not be renamed.\n%@";
+"A file name is required." = "A file name is required.";
+"The file name is not valid." = "The file name is not valid.";
+"A file with that name already exists." = "A file with that name already exists.";
 "%@ could not be moved to the Trash.\n%@" = "%@ could not be moved to the Trash.\n%@";
 "%d files could not be moved to the Trash.\n%@" = "%d files could not be moved to the Trash.\n%@";
 "Choose" = "Choose";

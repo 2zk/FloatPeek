@@ -60,6 +60,11 @@
 "Reveal in Finder" = "Finderに表示";
 "Move to Trash" = "ゴミ箱に入れる";
 "Could not Move to Trash" = "ゴミ箱に移動できませんでした";
+"Could not Rename File" = "ファイル名を変更できませんでした";
+"%@ could not be renamed.\n%@" = "%@ の名前を変更できませんでした。\n%@";
+"A file name is required." = "ファイル名を入力してください。";
+"The file name is not valid." = "使用できないファイル名です。";
+"A file with that name already exists." = "同じ名前のファイルが既に存在します。";
 "%@ could not be moved to the Trash.\n%@" = "%@ をゴミ箱に移動できませんでした。\n%@";
 "%d files could not be moved to the Trash.\n%@" = "%d個のファイルをゴミ箱に移動できませんでした。\n%@";
 "Choose" = "選択";

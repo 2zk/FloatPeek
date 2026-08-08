@@ -19,6 +19,8 @@ final class ImageBrowserViewModel: ObservableObject {
     @Published private(set) var sortOption: FileSortOption = .addedAt
     @Published private(set) var isReloading = false
     @Published private(set) var isMovingToTrash = false
+    @Published private(set) var isRenamingFile = false
+    @Published private(set) var fileActionErrorTitle: String?
     @Published private(set) var fileActionErrorMessage: String?
     @Published private var selection = ImageSelection()
 
@@ -71,6 +73,13 @@ final class ImageBrowserViewModel: ObservableObject {
 
     var selectedImages: [ImageFile] {
         images.filter { selectedImageIDs.contains($0.id) }
+    }
+
+    var selectedImageForRenaming: ImageFile? {
+        guard selectedImageIDs.count == 1 else {
+            return nil
+        }
+        return selectedImage
     }
 
     func setFolderURL(_ folderURL: URL?) {
@@ -261,6 +270,59 @@ final class ImageBrowserViewModel: ObservableObject {
         moveToTrash(actionImages(for: image))
     }
 
+    @discardableResult
+    func renameImage(_ image: ImageFile, toBaseName baseName: String) async -> Bool {
+        guard !isRenamingFile,
+              images.contains(where: { $0.id == image.id }) else {
+            return false
+        }
+
+        let fileExtension = image.url.pathExtension
+        let newFileName = fileExtension.isEmpty ? baseName : "\(baseName).\(fileExtension)"
+        let requestedFolderURL = folderURL
+        let fileActionManager = fileActionManager
+
+        isRenamingFile = true
+        fileActionErrorTitle = nil
+        fileActionErrorMessage = nil
+
+        do {
+            let renamedURL = try await fileActionManager.renameFile(
+                image.url,
+                toFileName: newFileName
+            )
+            isRenamingFile = false
+
+            guard folderURL == requestedFolderURL,
+                  let imageIndex = images.firstIndex(where: { $0.id == image.id }) else {
+                return true
+            }
+
+            images[imageIndex] = ImageFile(
+                url: renamedURL,
+                addedAt: image.addedAt,
+                modifiedAt: image.modifiedAt
+            )
+            images.sort { lhs, rhs in
+                ImageFileLoader.sort(lhs, rhs, by: sortOption)
+            }
+            selection.select(renamedURL, mode: .replace, orderedIDs: images.map(\.id))
+            selectionRevision += 1
+            displayState = .loaded
+            reload()
+            return true
+        } catch {
+            isRenamingFile = false
+            fileActionErrorTitle = localized("Could not Rename File")
+            fileActionErrorMessage = LocalizationManager.shared.localizedFormat(
+                "%@ could not be renamed.\n%@",
+                image.fileName,
+                renameErrorDescription(error)
+            )
+            return false
+        }
+    }
+
     private func moveToTrash(_ targetImages: [ImageFile]) -> Bool {
         guard !isMovingToTrash else {
             return true
@@ -281,6 +343,7 @@ final class ImageBrowserViewModel: ObservableObject {
         let fileActionManager = fileActionManager
 
         isMovingToTrash = true
+        fileActionErrorTitle = nil
         fileActionErrorMessage = nil
 
         Task { [weak self] in
@@ -309,6 +372,7 @@ final class ImageBrowserViewModel: ObservableObject {
                 }
 
                 self.isMovingToTrash = false
+                self.fileActionErrorTitle = localized("Could not Move to Trash")
                 if targetImages.count == 1, let targetImage = targetImages.first {
                     self.fileActionErrorMessage = LocalizationManager.shared.localizedFormat(
                         "%@ could not be moved to the Trash.\n%@",
@@ -333,7 +397,21 @@ final class ImageBrowserViewModel: ObservableObject {
     }
 
     func dismissFileActionError() {
+        fileActionErrorTitle = nil
         fileActionErrorMessage = nil
+    }
+
+    private func renameErrorDescription(_ error: Error) -> String {
+        switch error as? FileRenameError {
+        case .emptyName:
+            return localized("A file name is required.")
+        case .invalidName:
+            return localized("The file name is not valid.")
+        case .destinationExists:
+            return localized("A file with that name already exists.")
+        case nil:
+            return error.localizedDescription
+        }
     }
 
     private func reconcileSelection() {

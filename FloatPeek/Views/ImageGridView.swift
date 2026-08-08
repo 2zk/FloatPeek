@@ -13,6 +13,7 @@ struct ImageGridView: View {
     let selectedImageIDs: Set<ImageFile.ID>
     let selectedImages: [ImageFile]
     let scrollTargetImageID: ImageFile.ID?
+    let renamingImageID: ImageFile.ID?
     let columnCount: Int
     let scaleImagesWithWindow: Bool
     let availableWidth: CGFloat
@@ -23,6 +24,8 @@ struct ImageGridView: View {
     let onRevealInFinder: (ImageFile) -> Void
     let onCopyPath: (ImageFile) -> Void
     let onMoveToTrash: (ImageFile) -> Void
+    let onRename: (ImageFile, String) -> Void
+    let onCancelRename: () -> Void
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -32,6 +35,7 @@ struct ImageGridView: View {
                         ImageFileTile(
                             image: image,
                             isSelected: selectedImageIDs.contains(image.id),
+                            isRenaming: renamingImageID == image.id,
                             selectedDragURLs: selectedDragURLs(for: image),
                             thumbnailHeight: thumbnailHeight(for: image),
                             thumbnailSize: thumbnailSize(for: image),
@@ -55,7 +59,11 @@ struct ImageGridView: View {
                             },
                             onMoveToTrash: {
                                 onMoveToTrash(image)
-                            }
+                            },
+                            onRename: { baseName in
+                                onRename(image, baseName)
+                            },
+                            onCancelRename: onCancelRename
                         )
                         .id(image.id)
                     }

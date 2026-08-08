@@ -277,6 +277,106 @@ final class ImageBrowserFileActionTests: XCTestCase {
         XCTAssertTrue(viewModel.fileActionErrorMessage?.contains("2") == true)
     }
 
+    func testSingleSelectedImageCanBeRenamed() async throws {
+        viewModel.setSortOption(.fileName)
+        let first = try image(named: "first.png")
+        viewModel.selectImage(first)
+
+        XCTAssertEqual(viewModel.selectedImageForRenaming?.id, first.id)
+        let didRename = await viewModel.renameImage(first, toBaseName: "renamed")
+        XCTAssertTrue(didRename)
+        try await waitForReload()
+
+        let renamedURL = temporaryDirectory.appendingPathComponent("renamed.png")
+        let resolvedRenamedURL = renamedURL.resolvingSymlinksInPath()
+        XCTAssertTrue(FileManager.default.fileExists(atPath: renamedURL.path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: first.url.path))
+        XCTAssertEqual(viewModel.selectedImage?.id.resolvingSymlinksInPath(), resolvedRenamedURL)
+        XCTAssertEqual(
+            Set(viewModel.selectedImageIDs.map { $0.resolvingSymlinksInPath() }),
+            [resolvedRenamedURL]
+        )
+        XCTAssertEqual(
+            viewModel.images.map(\.fileName),
+            ["renamed.png", "second.png", "third.png"]
+        )
+    }
+
+    func testRenameResortsFilesByName() async throws {
+        viewModel.setSortOption(.fileName)
+        let first = try image(named: "first.png")
+        viewModel.selectImage(first)
+
+        let didRename = await viewModel.renameImage(first, toBaseName: "z-last")
+        XCTAssertTrue(didRename)
+        try await waitForReload()
+
+        XCTAssertEqual(
+            viewModel.images.map(\.fileName),
+            ["second.png", "third.png", "z-last.png"]
+        )
+        XCTAssertEqual(viewModel.selectedImage?.fileName, "z-last.png")
+    }
+
+    func testMultipleSelectedImagesCannotEnterRenameMode() throws {
+        let first = try image(named: "first.png")
+        let second = try image(named: "second.png")
+        viewModel.selectImage(first)
+        viewModel.selectImage(second, mode: .toggle)
+
+        XCTAssertNil(viewModel.selectedImageForRenaming)
+    }
+
+    func testRenameFailurePreservesFileAndSelection() async throws {
+        let first = try image(named: "first.png")
+        viewModel.selectImage(first)
+        fileActionManager.renameError = NSError(
+            domain: "FloatPeekTests",
+            code: 2,
+            userInfo: [NSLocalizedDescriptionKey: "Rename failure"]
+        )
+
+        let didRename = await viewModel.renameImage(first, toBaseName: "renamed")
+        XCTAssertFalse(didRename)
+
+        XCTAssertTrue(FileManager.default.fileExists(atPath: first.url.path))
+        XCTAssertEqual(viewModel.selectedImage?.id, first.id)
+        XCTAssertEqual(viewModel.fileActionErrorTitle, localized("Could not Rename File"))
+        XCTAssertTrue(viewModel.fileActionErrorMessage?.contains("Rename failure") == true)
+    }
+
+    func testFileActionManagerRejectsInvalidRenameNamesAndCollisions() async throws {
+        let first = temporaryDirectory.appendingPathComponent("first.png")
+        let manager = FileActionManager()
+
+        for invalidName in ["", ".", "..", "nested/name.png"] {
+            do {
+                _ = try await manager.renameFile(first, toFileName: invalidName)
+                XCTFail("不正なファイル名が受け入れられた: \(invalidName)")
+            } catch {
+                XCTAssertTrue(error is FileRenameError)
+            }
+        }
+
+        do {
+            _ = try await manager.renameFile(first, toFileName: "second.png")
+            XCTFail("既存ファイルと同名への変更が受け入れられた")
+        } catch {
+            XCTAssertEqual(error as? FileRenameError, .destinationExists)
+        }
+    }
+
+    func testFileActionManagerSupportsCaseOnlyRename() async throws {
+        let first = temporaryDirectory.appendingPathComponent("first.png")
+        let renamedURL = try await FileActionManager().renameFile(
+            first,
+            toFileName: "FIRST.png"
+        )
+
+        XCTAssertEqual(renamedURL.lastPathComponent, "FIRST.png")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: renamedURL.path))
+    }
+
     func testChangingTabFolderReloadsImagesFromNewFolder() async throws {
         let anotherDirectory = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
@@ -349,7 +449,9 @@ private final class TestFileActionManager: FileActionHandling {
     private(set) var copiedPathURLs: [URL] = []
     private(set) var revealedURLs: [URL] = []
     private(set) var movedToTrashURLs: [URL] = []
+    private(set) var renamedFiles: [(source: URL, fileName: String)] = []
     var moveToTrashError: Error?
+    var renameError: Error?
 
     func copyFiles(_ fileURLs: [URL]) -> Bool {
         copiedFileURLs = fileURLs
@@ -375,5 +477,18 @@ private final class TestFileActionManager: FileActionHandling {
         for fileURL in fileURLs {
             try FileManager.default.removeItem(at: fileURL)
         }
+    }
+
+    func renameFile(_ fileURL: URL, toFileName fileName: String) async throws -> URL {
+        if let renameError {
+            throw renameError
+        }
+
+        renamedFiles.append((fileURL, fileName))
+        let destinationURL = fileURL
+            .deletingLastPathComponent()
+            .appendingPathComponent(fileName)
+        try FileManager.default.moveItem(at: fileURL, to: destinationURL)
+        return destinationURL
     }
 }

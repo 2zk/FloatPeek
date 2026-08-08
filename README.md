@@ -140,7 +140,7 @@ v1.xからv2.0.0へ移行するときは、上記の`brew upgrade`またはGitHu
 | 選択を移動 | 矢印キー |
 | 選択範囲を拡張・縮小 | `Shift` + 矢印キー |
 | Quick Look の表示・非表示 | `Space` |
-| 既定アプリで開く | `Return` |
+| 選択中ファイルの名前を変更 | `Return` / テンキー `Enter` |
 | 選択中ファイルをコピー | `⌘C` |
 | 選択中ファイルをゴミ箱へ移動 | `Delete` / `Forward Delete` |
 | ウィンドウを非表示 | `Escape` |
@@ -148,7 +148,7 @@ v1.xからv2.0.0へ移行するときは、上記の`brew upgrade`またはGitHu
 ### 現在の制限
 
 - サブフォルダ内のファイルは表示しません。
-- ファイル検索、名前変更、通常のフォルダへの移動、画像編集には対応していません。
+- ファイル検索、通常のフォルダへの移動、画像編集には対応していません。
 - App Sandbox と App Store 配布には対応していません。
 - Intel Macには対応していません。Intel Mac向けの最終版はv1.3.0です。
 - macOS のフルスクリーン、Mission Control、複数 Spaces で常に最前面になることは保証しません。
@@ -289,7 +289,7 @@ The context menu can open or preview files, copy files or paths, reveal files in
 | Move the selection | Arrow keys |
 | Extend or contract the selection range | `Shift` + Arrow keys |
 | Show or hide Quick Look | `Space` |
-| Open with the default app | `Return` |
+| Rename the selected file | `Return` / numeric keypad `Enter` |
 | Select all displayed files | `Control` + `A` / `⌘A` |
 | Copy selected files | `⌘C` |
 | Move selected files to Trash | `Delete` / `Forward Delete` |
@@ -298,7 +298,7 @@ The context menu can open or preview files, copy files or paths, reveal files in
 ### Current limitations
 
 - Files in subfolders are not displayed.
-- Search, rename, regular file moves, and image editing are not supported.
+- Search, regular file moves, and image editing are not supported.
 - App Sandbox and App Store distribution are not supported.
 - Intel Macs are not supported. Version 1.3.0 is the final Intel-compatible release.
 - Always-on-top behavior is not guaranteed across macOS full-screen apps, Mission Control, or multiple Spaces.

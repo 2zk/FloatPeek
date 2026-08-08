@@ -13,6 +13,7 @@ struct ContentView: View {
     @State private var gridColumnCount = 1
     @State private var scaleImagesWithWindow = AppSettings.loadScaleImagesWithWindow()
     @State private var scrollTargetImageID: ImageFile.ID?
+    @State private var renamingImageID: ImageFile.ID?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -37,6 +38,7 @@ struct ContentView: View {
                             selectedImageIDs: viewModel.selectedImageIDs,
                             selectedImages: viewModel.selectedImages,
                             scrollTargetImageID: scrollTargetImageID,
+                            renamingImageID: renamingImageID,
                             columnCount: displayedGridColumnCount,
                             scaleImagesWithWindow: scaleImagesWithWindow,
                             availableWidth: geometry.size.width,
@@ -59,6 +61,15 @@ struct ContentView: View {
                             },
                             onMoveToTrash: { image in
                                 viewModel.moveImagesToTrash(for: image)
+                            },
+                            onRename: { image, baseName in
+                                renamingImageID = nil
+                                Task {
+                                    await viewModel.renameImage(image, toBaseName: baseName)
+                                }
+                            },
+                            onCancelRename: {
+                                renamingImageID = nil
                             }
                         )
                         .onAppear {
@@ -129,7 +140,14 @@ struct ContentView: View {
             QuickLookManager.shared.updatePreviewIfVisible(fileURL: selectedImage.url)
         }
         .onChange(of: viewModel.folderURL) { _, _ in
+            renamingImageID = nil
             ThumbnailProvider.shared.clearCache()
+        }
+        .onChange(of: viewModel.images) { _, images in
+            if let renamingImageID,
+               !images.contains(where: { $0.id == renamingImageID }) {
+                self.renamingImageID = nil
+            }
         }
         .onAppear {
             syncSelectedTab()
@@ -158,7 +176,7 @@ struct ContentView: View {
             )
         }
         .alert(
-            localization.localized("Could not Move to Trash"),
+            viewModel.fileActionErrorTitle ?? "",
             isPresented: Binding(
                 get: { viewModel.fileActionErrorMessage != nil },
                 set: { isPresented in
@@ -182,9 +200,18 @@ struct ContentView: View {
             return false
         }
 
+        guard renamingImageID == nil else {
+            return false
+        }
+
         switch key {
         case .return:
-            return viewModel.openSelectedImage()
+            guard let selectedImage = viewModel.selectedImageForRenaming else {
+                return !viewModel.selectedImageIDs.isEmpty
+            }
+
+            renamingImageID = selectedImage.id
+            return true
         case .escape:
             WindowManager.shared.hideWindow()
             return true
