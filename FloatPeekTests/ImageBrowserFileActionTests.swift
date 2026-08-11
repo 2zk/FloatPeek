@@ -497,6 +497,11 @@ private final class TestFileActionManager: FileActionHandling {
 @MainActor
 final class ImageFileTileFocusTests: XCTestCase {
     func testEnteringRenameModeFocusesFieldAndAcceptsTypingWithoutClick() async throws {
+        try XCTSkipIf(
+            ProcessInfo.processInfo.environment["GITHUB_ACTIONS"] == "true",
+            "対話可能なWindowServerセッションが必要"
+        )
+
         let model = RenameTileTestModel()
         let hostingView = NSHostingView(rootView: RenameTileTestView(model: model))
         let window = NSWindow(
