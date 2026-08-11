@@ -1,4 +1,5 @@
 import AppKit
+import SwiftUI
 import XCTest
 @testable import FloatPeek
 
@@ -490,5 +491,144 @@ private final class TestFileActionManager: FileActionHandling {
             .appendingPathComponent(fileName)
         try FileManager.default.moveItem(at: fileURL, to: destinationURL)
         return destinationURL
+    }
+}
+
+@MainActor
+final class ImageFileTileFocusTests: XCTestCase {
+    func testEnteringRenameModeFocusesFieldAndAcceptsTypingWithoutClick() async throws {
+        let model = RenameTileTestModel()
+        let hostingView = NSHostingView(rootView: RenameTileTestView(model: model))
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 180, height: 180),
+            styleMask: [.titled],
+            backing: .buffered,
+            defer: false
+        )
+        window.contentView = hostingView
+        window.makeKeyAndOrderFront(nil)
+        defer {
+            window.orderOut(nil)
+            window.close()
+        }
+
+        model.isRenaming = true
+
+        let originalName = model.image.url.deletingPathExtension().lastPathComponent
+        let didFocusRenameField = await waitUntil {
+            guard let fieldEditor = window.firstResponder as? NSTextView else {
+                return false
+            }
+
+            return fieldEditor.isFieldEditor
+                && fieldEditor.string == originalName
+                && fieldEditor.selectedRange() == NSRange(
+                    location: 0,
+                    length: originalName.utf16.count
+                )
+        }
+        XCTAssertTrue(didFocusRenameField)
+
+        let typedCharacter = "x"
+        let typingEvent = try XCTUnwrap(
+            makeKeyEvent(
+                characters: typedCharacter,
+                keyCode: 7,
+                windowNumber: window.windowNumber
+            )
+        )
+        window.sendEvent(typingEvent)
+
+        let didAcceptTyping = await waitUntil {
+            (window.firstResponder as? NSTextView)?.string == typedCharacter
+        }
+        XCTAssertTrue(didAcceptTyping)
+
+        let returnEvent = try XCTUnwrap(
+            makeKeyEvent(
+                characters: "\r",
+                keyCode: 36,
+                windowNumber: window.windowNumber
+            )
+        )
+        window.sendEvent(returnEvent)
+
+        let didSubmitRename = await waitUntil {
+            model.renamedBaseName == typedCharacter
+        }
+        XCTAssertTrue(didSubmitRename)
+    }
+
+    private func waitUntil(
+        timeout: Duration = .seconds(1),
+        condition: @MainActor () -> Bool
+    ) async -> Bool {
+        let clock = ContinuousClock()
+        let deadline = clock.now.advanced(by: timeout)
+
+        while clock.now < deadline {
+            if condition() {
+                return true
+            }
+            await Task.yield()
+        }
+
+        return condition()
+    }
+
+    private func makeKeyEvent(
+        characters: String,
+        keyCode: UInt16,
+        windowNumber: Int
+    ) -> NSEvent? {
+        NSEvent.keyEvent(
+            with: .keyDown,
+            location: .zero,
+            modifierFlags: [],
+            timestamp: 0,
+            windowNumber: windowNumber,
+            context: nil,
+            characters: characters,
+            charactersIgnoringModifiers: characters,
+            isARepeat: false,
+            keyCode: keyCode
+        )
+    }
+}
+
+@MainActor
+private final class RenameTileTestModel: ObservableObject {
+    @Published var isRenaming = false
+    @Published var renamedBaseName: String?
+
+    let image = ImageFile(
+        url: URL(fileURLWithPath: "/tmp/original.txt"),
+        addedAt: nil,
+        modifiedAt: nil
+    )
+}
+
+private struct RenameTileTestView: View {
+    @ObservedObject var model: RenameTileTestModel
+
+    var body: some View {
+        ImageFileTile(
+            image: model.image,
+            isSelected: true,
+            isRenaming: model.isRenaming,
+            selectedDragURLs: [],
+            thumbnailHeight: 100,
+            thumbnailSize: CGSize(width: 64, height: 64),
+            onSelect: { _ in },
+            onOpen: {},
+            onPreview: {},
+            onCopy: {},
+            onRevealInFinder: {},
+            onCopyPath: {},
+            onMoveToTrash: {},
+            onRename: { model.renamedBaseName = $0 },
+            onCancelRename: {}
+        )
+        .frame(width: 160, height: 160)
     }
 }

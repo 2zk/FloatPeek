@@ -134,7 +134,6 @@ struct ImageFileTile: View {
             }
 
             renameDraft = image.url.deletingPathExtension().lastPathComponent
-            focusRenameField()
         }
     }
 
@@ -162,7 +161,11 @@ struct ImageFileTile: View {
                 focusRenameField()
             }
             .onChange(of: isRenameFieldFocused) { wasFocused, isFocused in
-                if wasFocused, !isFocused, isRenaming {
+                if isFocused {
+                    DispatchQueue.main.async {
+                        NSApp.sendAction(#selector(NSText.selectAll(_:)), to: nil, from: nil)
+                    }
+                } else if wasFocused, isRenaming {
                     onRename(renameDraft)
                 }
             }
@@ -176,9 +179,8 @@ struct ImageFileTile: View {
     }
 
     private func focusRenameField() {
-        isRenameFieldFocused = true
         DispatchQueue.main.async {
-            NSApp.sendAction(#selector(NSText.selectAll(_:)), to: nil, from: nil)
+            isRenameFieldFocused = true
         }
     }
 
