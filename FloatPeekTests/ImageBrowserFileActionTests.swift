@@ -506,6 +506,7 @@ final class ImageFileTileFocusTests: XCTestCase {
             defer: false
         )
         window.contentView = hostingView
+        NSApp.activate(ignoringOtherApps: true)
         window.makeKeyAndOrderFront(nil)
         defer {
             window.orderOut(nil)
@@ -570,7 +571,7 @@ final class ImageFileTileFocusTests: XCTestCase {
             if condition() {
                 return true
             }
-            await Task.yield()
+            try? await Task.sleep(for: .milliseconds(10))
         }
 
         return condition()
