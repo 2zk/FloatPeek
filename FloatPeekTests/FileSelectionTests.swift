@@ -1,13 +1,13 @@
 import XCTest
 @testable import FloatPeek
 
-final class ImageSelectionTests: XCTestCase {
+final class FileSelectionTests: XCTestCase {
     private let ids = (0..<6).map {
         URL(fileURLWithPath: "/tmp/image-\($0).png")
     }
 
     func testReplaceAndToggleSelection() {
-        var selection = ImageSelection()
+        var selection = FileSelection()
 
         selection.select(ids[1], mode: .replace, orderedIDs: ids)
         selection.select(ids[3], mode: .toggle, orderedIDs: ids)
@@ -22,7 +22,7 @@ final class ImageSelectionTests: XCTestCase {
     }
 
     func testRangeSelectionUsesPreviousSelectionAsAnchor() {
-        var selection = ImageSelection()
+        var selection = FileSelection()
         selection.select(ids[1], mode: .replace, orderedIDs: ids)
 
         selection.select(ids[4], mode: .range, orderedIDs: ids)
@@ -32,7 +32,7 @@ final class ImageSelectionTests: XCTestCase {
     }
 
     func testMovingSelectionUsesGridColumnCount() {
-        var selection = ImageSelection()
+        var selection = FileSelection()
         selection.select(ids[1], mode: .replace, orderedIDs: ids)
 
         XCTAssertTrue(selection.move(.down, columnCount: 2, orderedIDs: ids))
@@ -42,7 +42,7 @@ final class ImageSelectionTests: XCTestCase {
     }
 
     func testMovingBeyondBoundsDoesNotChangeSelection() {
-        var selection = ImageSelection()
+        var selection = FileSelection()
         selection.select(ids[0], mode: .replace, orderedIDs: ids)
 
         XCTAssertFalse(selection.move(.up, columnCount: 3, orderedIDs: ids))
@@ -50,7 +50,7 @@ final class ImageSelectionTests: XCTestCase {
     }
 
     func testShiftMovingSelectionExpandsAndContractsFromAnchor() {
-        var selection = ImageSelection()
+        var selection = FileSelection()
         selection.select(ids[1], mode: .replace, orderedIDs: ids)
 
         XCTAssertTrue(
@@ -88,7 +88,7 @@ final class ImageSelectionTests: XCTestCase {
     }
 
     func testReconcileRemovesMissingItemsAndKeepsOrderedFocus() {
-        var selection = ImageSelection()
+        var selection = FileSelection()
         selection.select(ids[1], mode: .replace, orderedIDs: ids)
         selection.select(ids[3], mode: .toggle, orderedIDs: ids)
 
@@ -99,11 +99,11 @@ final class ImageSelectionTests: XCTestCase {
     }
 
     func testGridColumnCountMatchesColumnWidthAndSpacing() {
-        XCTAssertEqual(ImageGridLayout.columnCount(forAvailableWidth: 0), 1)
-        XCTAssertEqual(ImageGridLayout.columnCount(forAvailableWidth: 160), 1)
+        XCTAssertEqual(FileGridLayout.columnCount(forAvailableWidth: 0), 1)
+        XCTAssertEqual(FileGridLayout.columnCount(forAvailableWidth: 160), 1)
         // 余白12×2 + 列140×2 + 間隔12 = 316
-        XCTAssertEqual(ImageGridLayout.columnCount(forAvailableWidth: 315), 1)
-        XCTAssertEqual(ImageGridLayout.columnCount(forAvailableWidth: 316), 2)
-        XCTAssertEqual(ImageGridLayout.columnCount(forAvailableWidth: 468), 3)
+        XCTAssertEqual(FileGridLayout.columnCount(forAvailableWidth: 315), 1)
+        XCTAssertEqual(FileGridLayout.columnCount(forAvailableWidth: 316), 2)
+        XCTAssertEqual(FileGridLayout.columnCount(forAvailableWidth: 468), 3)
     }
 }

@@ -1,10 +1,10 @@
 import Foundation
 
-enum ImageFileLoaderError: Error, Equatable {
+enum FileItemLoaderError: Error, Equatable {
     case folderNotAccessible
 }
 
-struct ImageFileLoader: @unchecked Sendable {
+struct FileItemLoader: @unchecked Sendable {
     static let supportedExtensions = AppSettings.allSupportedFileExtensions
     private static let resourceKeys: [URLResourceKey] = [
         .addedToDirectoryDateKey,
@@ -24,14 +24,14 @@ struct ImageFileLoader: @unchecked Sendable {
         self.displayedFileExtensions = displayedFileExtensions
     }
 
-    func loadImages(
+    func loadFiles(
         in folderURL: URL,
         sortedBy sortOption: FileSortOption = .addedAt
-    ) throws -> [ImageFile] {
+    ) throws -> [FileItem] {
         var isDirectory: ObjCBool = false
         guard fileManager.fileExists(atPath: folderURL.path, isDirectory: &isDirectory),
               isDirectory.boolValue else {
-            throw ImageFileLoaderError.folderNotAccessible
+            throw FileItemLoaderError.folderNotAccessible
         }
 
         let fileURLs = try fileManager.contentsOfDirectory(
@@ -40,7 +40,7 @@ struct ImageFileLoader: @unchecked Sendable {
             options: [.skipsHiddenFiles]
         )
 
-        var images: [ImageFile] = []
+        var files: [FileItem] = []
 
         for fileURL in fileURLs {
             try Task.checkCancellation()
@@ -59,23 +59,23 @@ struct ImageFileLoader: @unchecked Sendable {
                 continue
             }
 
-            images.append(ImageFile(
+            files.append(FileItem(
                 url: fileURL,
                 addedAt: resourceValues.addedToDirectoryDate ?? resourceValues.creationDate,
                 modifiedAt: resourceValues.contentModificationDate
             ))
         }
 
-        images.sort(by: sortOption)
-        return images
+        files.sort(by: sortOption)
+        return files
     }
 
-    func loadImagesAsync(
+    func loadFilesAsync(
         in folderURL: URL,
         sortedBy sortOption: FileSortOption = .addedAt
-    ) async throws -> [ImageFile] {
+    ) async throws -> [FileItem] {
         let loadTask = Task.detached(priority: .userInitiated) {
-            try loadImages(in: folderURL, sortedBy: sortOption)
+            try loadFiles(in: folderURL, sortedBy: sortOption)
         }
 
         return try await withTaskCancellationHandler {

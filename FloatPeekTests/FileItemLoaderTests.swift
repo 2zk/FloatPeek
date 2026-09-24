@@ -1,7 +1,7 @@
 import XCTest
 @testable import FloatPeek
 
-final class ImageFileLoaderTests: XCTestCase {
+final class FileItemLoaderTests: XCTestCase {
     private var temporaryDirectory: URL!
 
     override func setUpWithError() throws {
@@ -20,96 +20,96 @@ final class ImageFileLoaderTests: XCTestCase {
         temporaryDirectory = nil
     }
 
-    func testLoadImagesFiltersSupportedExtensionsCaseInsensitively() throws {
+    func testLoadFilesFiltersSupportedExtensionsCaseInsensitively() throws {
         try createFile(named: "a.JPG", modifiedAt: Date(timeIntervalSince1970: 10))
         try createFile(named: "b.png", modifiedAt: Date(timeIntervalSince1970: 20))
         try createFile(named: "c.PDF", modifiedAt: Date(timeIntervalSince1970: 30))
         try createFile(named: "c.txt", modifiedAt: Date(timeIntervalSince1970: 30))
 
-        let images = try ImageFileLoader().loadImages(in: temporaryDirectory, sortedBy: .modifiedAt)
+        let files = try FileItemLoader().loadFiles(in: temporaryDirectory, sortedBy: .modifiedAt)
 
-        XCTAssertEqual(images.map(\.fileName), ["c.PDF", "b.png", "a.JPG"])
+        XCTAssertEqual(files.map(\.fileName), ["c.PDF", "b.png", "a.JPG"])
     }
 
-    func testLoadImagesFiltersDeselectedExtensions() throws {
+    func testLoadFilesFiltersDeselectedExtensions() throws {
         try createFile(named: "a.jpg", modifiedAt: Date(timeIntervalSince1970: 10))
         try createFile(named: "b.png", modifiedAt: Date(timeIntervalSince1970: 20))
 
-        let images = try ImageFileLoader(
+        let files = try FileItemLoader(
             displayedFileExtensions: ["png"]
-        ).loadImages(in: temporaryDirectory)
+        ).loadFiles(in: temporaryDirectory)
 
-        XCTAssertEqual(images.map(\.fileName), ["b.png"])
+        XCTAssertEqual(files.map(\.fileName), ["b.png"])
     }
 
-    func testLoadImagesIncludesSelectedDocumentExtensionCaseInsensitively() throws {
+    func testLoadFilesIncludesSelectedDocumentExtensionCaseInsensitively() throws {
         try createFile(named: "notes.TXT", modifiedAt: Date(timeIntervalSince1970: 10))
         try createFile(named: "report.DOCX", modifiedAt: Date(timeIntervalSince1970: 20))
 
-        let images = try ImageFileLoader(
+        let files = try FileItemLoader(
             displayedFileExtensions: ["txt", "docx"]
-        ).loadImages(in: temporaryDirectory, sortedBy: .fileName)
+        ).loadFiles(in: temporaryDirectory, sortedBy: .fileName)
 
-        XCTAssertEqual(images.map(\.fileName), ["notes.TXT", "report.DOCX"])
+        XCTAssertEqual(files.map(\.fileName), ["notes.TXT", "report.DOCX"])
     }
 
     func testFilePresentationKindUsesExtensionCaseInsensitively() {
-        XCTAssertEqual(makeImageFile(named: "image.WEBP").presentationKind, .thumbnail)
-        XCTAssertEqual(makeImageFile(named: "report.DOCX").presentationKind, .fileIcon)
-        XCTAssertEqual(makeImageFile(named: "unknown.bin").presentationKind, .fileIcon)
+        XCTAssertEqual(makeFileItem(named: "image.WEBP").presentationKind, .thumbnail)
+        XCTAssertEqual(makeFileItem(named: "report.DOCX").presentationKind, .fileIcon)
+        XCTAssertEqual(makeFileItem(named: "unknown.bin").presentationKind, .fileIcon)
     }
 
-    func testLoadImagesSortsByModifiedDateDescendingThenNameAscending() throws {
+    func testLoadFilesSortsByModifiedDateDescendingThenNameAscending() throws {
         let newerDate = Date(timeIntervalSince1970: 20)
         let olderDate = Date(timeIntervalSince1970: 10)
         try createFile(named: "z.png", modifiedAt: olderDate)
         try createFile(named: "b.png", modifiedAt: newerDate)
         try createFile(named: "a.png", modifiedAt: newerDate)
 
-        let images = try ImageFileLoader().loadImages(in: temporaryDirectory, sortedBy: .modifiedAt)
+        let files = try FileItemLoader().loadFiles(in: temporaryDirectory, sortedBy: .modifiedAt)
 
-        XCTAssertEqual(images.map(\.fileName), ["a.png", "b.png", "z.png"])
+        XCTAssertEqual(files.map(\.fileName), ["a.png", "b.png", "z.png"])
     }
 
     func testSortsByAddedDateDescendingThenNameAscending() {
         let newerDate = Date(timeIntervalSince1970: 20)
         let olderDate = Date(timeIntervalSince1970: 10)
-        let images = [
-            makeImageFile(named: "z.png", addedAt: olderDate),
-            makeImageFile(named: "b.png", addedAt: newerDate),
-            makeImageFile(named: "a.png", addedAt: newerDate)
+        let files = [
+            makeFileItem(named: "z.png", addedAt: olderDate),
+            makeFileItem(named: "b.png", addedAt: newerDate),
+            makeFileItem(named: "a.png", addedAt: newerDate)
         ]
         .sorted(by: FileSortOption.addedAt.areInIncreasingOrder)
 
-        XCTAssertEqual(images.map(\.fileName), ["a.png", "b.png", "z.png"])
+        XCTAssertEqual(files.map(\.fileName), ["a.png", "b.png", "z.png"])
     }
 
-    func testLoadImagesSortsByFileNameAscending() throws {
+    func testLoadFilesSortsByFileNameAscending() throws {
         try createFile(named: "z.png", modifiedAt: Date(timeIntervalSince1970: 30))
         try createFile(named: "a.png", modifiedAt: Date(timeIntervalSince1970: 20))
         try createFile(named: "c.PDF", modifiedAt: Date(timeIntervalSince1970: 10))
 
-        let images = try ImageFileLoader().loadImages(in: temporaryDirectory, sortedBy: .fileName)
+        let files = try FileItemLoader().loadFiles(in: temporaryDirectory, sortedBy: .fileName)
 
-        XCTAssertEqual(images.map(\.fileName), ["a.png", "c.PDF", "z.png"])
+        XCTAssertEqual(files.map(\.fileName), ["a.png", "c.PDF", "z.png"])
     }
 
-    func testLoadImagesThrowsForMissingFolder() {
+    func testLoadFilesThrowsForMissingFolder() {
         let missingFolder = temporaryDirectory.appendingPathComponent("missing", isDirectory: true)
 
-        XCTAssertThrowsError(try ImageFileLoader().loadImages(in: missingFolder)) { error in
-            XCTAssertEqual(error as? ImageFileLoaderError, .folderNotAccessible)
+        XCTAssertThrowsError(try FileItemLoader().loadFiles(in: missingFolder)) { error in
+            XCTAssertEqual(error as? FileItemLoaderError, .folderNotAccessible)
         }
     }
 
-    func testImageFileSplitsBaseNameAndKeepsExtensionWhenRenaming() {
-        let image = ImageFile(url: URL(fileURLWithPath: "/tmp/photo.v2.PNG"), addedAt: nil, modifiedAt: nil)
-        XCTAssertEqual(image.baseName, "photo.v2")
-        XCTAssertEqual(image.fileExtension, "PNG")
-        XCTAssertEqual(image.presentationKind, .thumbnail)
-        XCTAssertEqual(image.fileName(withBaseName: "renamed"), "renamed.PNG")
+    func testFileItemSplitsBaseNameAndKeepsExtensionWhenRenaming() {
+        let file = FileItem(url: URL(fileURLWithPath: "/tmp/photo.v2.PNG"), addedAt: nil, modifiedAt: nil)
+        XCTAssertEqual(file.baseName, "photo.v2")
+        XCTAssertEqual(file.fileExtension, "PNG")
+        XCTAssertEqual(file.presentationKind, .thumbnail)
+        XCTAssertEqual(file.fileName(withBaseName: "renamed"), "renamed.PNG")
 
-        let noExtension = ImageFile(url: URL(fileURLWithPath: "/tmp/README"), addedAt: nil, modifiedAt: nil)
+        let noExtension = FileItem(url: URL(fileURLWithPath: "/tmp/README"), addedAt: nil, modifiedAt: nil)
         XCTAssertEqual(noExtension.baseName, "README")
         XCTAssertEqual(noExtension.fileName(withBaseName: "NOTES"), "NOTES")
     }
@@ -123,8 +123,8 @@ final class ImageFileLoaderTests: XCTestCase {
         )
     }
 
-    private func makeImageFile(named fileName: String, addedAt: Date? = nil) -> ImageFile {
-        ImageFile(
+    private func makeFileItem(named fileName: String, addedAt: Date? = nil) -> FileItem {
+        FileItem(
             url: temporaryDirectory.appendingPathComponent(fileName),
             addedAt: addedAt,
             modifiedAt: nil

@@ -3,11 +3,11 @@ import XCTest
 @testable import FloatPeek
 
 @MainActor
-final class ImageBrowserFileActionTests: XCTestCase {
+final class FileBrowserActionTests: XCTestCase {
     private var temporaryDirectory: URL!
     private var fileActionManager: TestFileActionManager!
     private var filePreviewer: TestFilePreviewer!
-    private var viewModel: ImageBrowserViewModel!
+    private var viewModel: FileBrowserViewModel!
 
     override func setUp() async throws {
         temporaryDirectory = FileManager.default.temporaryDirectory
@@ -22,7 +22,7 @@ final class ImageBrowserFileActionTests: XCTestCase {
 
         fileActionManager = TestFileActionManager()
         filePreviewer = TestFilePreviewer()
-        viewModel = ImageBrowserViewModel(
+        viewModel = FileBrowserViewModel(
             initialFolderURL: temporaryDirectory,
             fileActionManager: fileActionManager,
             filePreviewer: filePreviewer
@@ -38,22 +38,22 @@ final class ImageBrowserFileActionTests: XCTestCase {
         temporaryDirectory = nil
     }
 
-    func testCopySelectedImagesCopiesAllSelectedFiles() throws {
-        let first = try image(named: "first.png")
-        let second = try image(named: "second.png")
-        viewModel.selectImage(first)
-        viewModel.selectImage(second, mode: .toggle)
+    func testCopySelectedFilesCopiesAllSelectedFiles() throws {
+        let first = try file(named: "first.png")
+        let second = try file(named: "second.png")
+        viewModel.selectFile(first)
+        viewModel.selectFile(second, mode: .toggle)
 
-        XCTAssertTrue(viewModel.copySelectedImages())
+        XCTAssertTrue(viewModel.copySelectedFiles())
 
         XCTAssertEqual(Set(fileActionManager.copiedFileURLs), Set([first.url, second.url]))
     }
 
     func testContextActionUsesSelectionWhenTargetIsSelected() throws {
-        let first = try image(named: "first.png")
-        let second = try image(named: "second.png")
-        viewModel.selectImage(first)
-        viewModel.selectImage(second, mode: .toggle)
+        let first = try file(named: "first.png")
+        let second = try file(named: "second.png")
+        viewModel.selectFile(first)
+        viewModel.selectFile(second, mode: .toggle)
 
         XCTAssertTrue(viewModel.copyPaths(for: first))
         XCTAssertTrue(viewModel.revealInFinder(first))
@@ -64,31 +64,31 @@ final class ImageBrowserFileActionTests: XCTestCase {
     }
 
     func testContextActionUsesOnlyUnselectedTarget() throws {
-        let first = try image(named: "first.png")
-        let third = try image(named: "third.png")
-        viewModel.selectImage(first)
+        let first = try file(named: "first.png")
+        let third = try file(named: "third.png")
+        viewModel.selectFile(first)
 
-        XCTAssertTrue(viewModel.copyImages(for: third))
+        XCTAssertTrue(viewModel.copyFiles(for: third))
 
         XCTAssertEqual(fileActionManager.copiedFileURLs, [third.url])
     }
 
     func testActionURLsUseSelectionOnlyWhenTargetIsSelected() throws {
-        let first = try image(named: "first.png")
-        let second = try image(named: "second.png")
-        let third = try image(named: "third.png")
-        viewModel.selectImage(first)
-        viewModel.selectImage(second, mode: .toggle)
+        let first = try file(named: "first.png")
+        let second = try file(named: "second.png")
+        let third = try file(named: "third.png")
+        viewModel.selectFile(first)
+        viewModel.selectFile(second, mode: .toggle)
 
         XCTAssertEqual(Set(viewModel.actionURLs(for: first)), [first.url, second.url])
         XCTAssertEqual(viewModel.actionURLs(for: third), [third.url])
     }
 
     func testPerformFileActionDispatchesToFileActionManager() throws {
-        let first = try image(named: "first.png")
-        let second = try image(named: "second.png")
-        viewModel.selectImage(first)
-        viewModel.selectImage(second, mode: .toggle)
+        let first = try file(named: "first.png")
+        let second = try file(named: "second.png")
+        viewModel.selectFile(first)
+        viewModel.selectFile(second, mode: .toggle)
 
         viewModel.performFileAction(.copy, for: first)
         viewModel.performFileAction(.copyPath, for: first)
@@ -100,14 +100,14 @@ final class ImageBrowserFileActionTests: XCTestCase {
         XCTAssertEqual(Set(fileActionManager.revealedURLs), expectedURLs)
     }
 
-    func testPreviewActionSelectsUnselectedImageAndShowsPreview() throws {
-        let first = try image(named: "first.png")
-        let third = try image(named: "third.png")
-        viewModel.selectImage(first)
+    func testPreviewActionSelectsUnselectedFileAndShowsPreview() throws {
+        let first = try file(named: "first.png")
+        let third = try file(named: "third.png")
+        viewModel.selectFile(first)
 
         viewModel.performFileAction(.preview, for: third)
 
-        XCTAssertEqual(viewModel.selectedImageIDs, [third.id])
+        XCTAssertEqual(viewModel.selectedFileIDs, [third.id])
         XCTAssertEqual(filePreviewer.previewedURLs, [third.url])
     }
 
@@ -132,13 +132,13 @@ final class ImageBrowserFileActionTests: XCTestCase {
         }
     }
 
-    func testSelectAllImagesSelectsEveryDisplayedFile() throws {
-        let focusedImage = try image(named: "second.png")
-        viewModel.selectImage(focusedImage)
+    func testSelectAllFilesSelectsEveryDisplayedFile() throws {
+        let focusedFile = try file(named: "second.png")
+        viewModel.selectFile(focusedFile)
 
-        XCTAssertTrue(viewModel.selectAllImages())
-        XCTAssertEqual(viewModel.selectedImageIDs, Set(viewModel.images.map(\.id)))
-        XCTAssertEqual(viewModel.selectedImage?.id, focusedImage.id)
+        XCTAssertTrue(viewModel.selectAllFiles())
+        XCTAssertEqual(viewModel.selectedFileIDs, Set(viewModel.files.map(\.id)))
+        XCTAssertEqual(viewModel.selectedFile?.id, focusedFile.id)
     }
 
     func testDeleteKeysAreHandledWithoutModifiersOrKeyRepeat() throws {
@@ -181,7 +181,7 @@ final class ImageBrowserFileActionTests: XCTestCase {
     }
 
     func testArrowKeysMapToSelectionDirections() throws {
-        let expectedDirections: [(UInt16, ImageSelection.Direction)] = [
+        let expectedDirections: [(UInt16, FileSelection.Direction)] = [
             (123, .left),
             (124, .right),
             (125, .down),
@@ -270,98 +270,98 @@ final class ImageBrowserFileActionTests: XCTestCase {
         )
     }
 
-    func testMoveSelectedImagesToTrashMovesAllSelectedImagesAndSelectsNext() async throws {
+    func testMoveSelectedFilesToTrashMovesAllSelectedFilesAndSelectsNext() async throws {
         viewModel.setSortOption(.fileName)
-        let first = try image(named: "first.png")
-        let second = try image(named: "second.png")
-        let third = try image(named: "third.png")
-        viewModel.selectImage(first)
-        viewModel.selectImage(second, mode: .toggle)
+        let first = try file(named: "first.png")
+        let second = try file(named: "second.png")
+        let third = try file(named: "third.png")
+        viewModel.selectFile(first)
+        viewModel.selectFile(second, mode: .toggle)
 
-        XCTAssertTrue(viewModel.moveSelectedImagesToTrash())
+        XCTAssertTrue(viewModel.moveSelectedFilesToTrash())
         try await waitForTrashOperation()
 
         XCTAssertEqual(fileActionManager.movedToTrashURLs, [first.url, second.url])
-        XCTAssertEqual(viewModel.images.map(\.fileName), ["third.png"])
-        XCTAssertEqual(viewModel.selectedImage?.id, third.id)
-        XCTAssertEqual(viewModel.selectedImageIDs, [third.id])
+        XCTAssertEqual(viewModel.files.map(\.fileName), ["third.png"])
+        XCTAssertEqual(viewModel.selectedFile?.id, third.id)
+        XCTAssertEqual(viewModel.selectedFileIDs, [third.id])
     }
 
-    func testMoveSelectedContextImageMovesAllSelectedImages() async throws {
+    func testMoveSelectedContextFileMovesAllSelectedFiles() async throws {
         viewModel.setSortOption(.fileName)
-        let first = try image(named: "first.png")
-        let second = try image(named: "second.png")
-        let third = try image(named: "third.png")
-        viewModel.selectImage(first)
-        viewModel.selectImage(second, mode: .toggle)
+        let first = try file(named: "first.png")
+        let second = try file(named: "second.png")
+        let third = try file(named: "third.png")
+        viewModel.selectFile(first)
+        viewModel.selectFile(second, mode: .toggle)
 
-        XCTAssertTrue(viewModel.moveImagesToTrash(for: first))
+        XCTAssertTrue(viewModel.moveFilesToTrash(for: first))
         try await waitForTrashOperation()
 
         XCTAssertEqual(fileActionManager.movedToTrashURLs, [first.url, second.url])
-        XCTAssertEqual(viewModel.selectedImage?.id, third.id)
-        XCTAssertEqual(viewModel.selectedImageIDs, [third.id])
+        XCTAssertEqual(viewModel.selectedFile?.id, third.id)
+        XCTAssertEqual(viewModel.selectedFileIDs, [third.id])
     }
 
-    func testMoveUnselectedContextImageMovesOnlyTargetImage() async throws {
+    func testMoveUnselectedContextFileMovesOnlyTargetFile() async throws {
         viewModel.setSortOption(.fileName)
-        let first = try image(named: "first.png")
-        let third = try image(named: "third.png")
-        viewModel.selectImage(first)
+        let first = try file(named: "first.png")
+        let third = try file(named: "third.png")
+        viewModel.selectFile(first)
 
-        XCTAssertTrue(viewModel.moveImagesToTrash(for: third))
+        XCTAssertTrue(viewModel.moveFilesToTrash(for: third))
         try await waitForTrashOperation()
 
         XCTAssertEqual(fileActionManager.movedToTrashURLs, [third.url])
-        XCTAssertEqual(viewModel.selectedImage?.id, first.id)
-        XCTAssertEqual(viewModel.selectedImageIDs, [first.id])
+        XCTAssertEqual(viewModel.selectedFile?.id, first.id)
+        XCTAssertEqual(viewModel.selectedFileIDs, [first.id])
     }
 
-    func testMovingLastThenOnlyRemainingImagesUpdatesSelection() async throws {
+    func testMovingLastThenOnlyRemainingFilesUpdatesSelection() async throws {
         viewModel.setSortOption(.fileName)
-        let third = try image(named: "third.png")
-        viewModel.selectImage(third)
+        let third = try file(named: "third.png")
+        viewModel.selectFile(third)
 
-        XCTAssertTrue(viewModel.moveSelectedImagesToTrash())
+        XCTAssertTrue(viewModel.moveSelectedFilesToTrash())
         try await waitForTrashOperation()
-        XCTAssertEqual(viewModel.selectedImage?.fileName, "second.png")
+        XCTAssertEqual(viewModel.selectedFile?.fileName, "second.png")
 
-        XCTAssertTrue(viewModel.moveSelectedImagesToTrash())
+        XCTAssertTrue(viewModel.moveSelectedFilesToTrash())
         try await waitForTrashOperation()
-        XCTAssertEqual(viewModel.selectedImage?.fileName, "first.png")
+        XCTAssertEqual(viewModel.selectedFile?.fileName, "first.png")
 
-        XCTAssertTrue(viewModel.moveSelectedImagesToTrash())
+        XCTAssertTrue(viewModel.moveSelectedFilesToTrash())
         try await waitForTrashOperation()
-        XCTAssertNil(viewModel.selectedImage)
-        XCTAssertEqual(viewModel.displayState, .noImages)
+        XCTAssertNil(viewModel.selectedFile)
+        XCTAssertEqual(viewModel.displayState, .noFiles)
     }
 
-    func testMoveToTrashFailurePreservesImagesAndSelection() async throws {
-        let first = try image(named: "first.png")
-        let second = try image(named: "second.png")
-        viewModel.selectImage(first)
-        viewModel.selectImage(second, mode: .toggle)
+    func testMoveToTrashFailurePreservesFilesAndSelection() async throws {
+        let first = try file(named: "first.png")
+        let second = try file(named: "second.png")
+        viewModel.selectFile(first)
+        viewModel.selectFile(second, mode: .toggle)
         fileActionManager.moveToTrashError = NSError(
             domain: "FloatPeekTests",
             code: 1,
             userInfo: [NSLocalizedDescriptionKey: "Test failure"]
         )
 
-        XCTAssertTrue(viewModel.moveSelectedImagesToTrash())
+        XCTAssertTrue(viewModel.moveSelectedFilesToTrash())
         try await waitForTrashOperation()
 
-        XCTAssertEqual(viewModel.images.count, 3)
-        XCTAssertEqual(viewModel.selectedImageIDs, [first.id, second.id])
+        XCTAssertEqual(viewModel.files.count, 3)
+        XCTAssertEqual(viewModel.selectedFileIDs, [first.id, second.id])
         XCTAssertTrue(viewModel.fileActionError?.message.contains("2") == true)
     }
 
-    func testSingleSelectedImageCanBeRenamed() async throws {
+    func testSingleSelectedFileCanBeRenamed() async throws {
         viewModel.setSortOption(.fileName)
-        let first = try image(named: "first.png")
-        viewModel.selectImage(first)
+        let first = try file(named: "first.png")
+        viewModel.selectFile(first)
 
-        XCTAssertEqual(viewModel.selectedImageForRenaming?.id, first.id)
-        let didRename = await viewModel.renameImage(first, toBaseName: "renamed")
+        XCTAssertEqual(viewModel.selectedFileForRenaming?.id, first.id)
+        let didRename = await viewModel.renameFile(first, toBaseName: "renamed")
         XCTAssertTrue(didRename)
         try await waitForReload()
 
@@ -369,56 +369,56 @@ final class ImageBrowserFileActionTests: XCTestCase {
         let resolvedRenamedURL = renamedURL.resolvingSymlinksInPath()
         XCTAssertTrue(FileManager.default.fileExists(atPath: renamedURL.path))
         XCTAssertFalse(FileManager.default.fileExists(atPath: first.url.path))
-        XCTAssertEqual(viewModel.selectedImage?.id.resolvingSymlinksInPath(), resolvedRenamedURL)
+        XCTAssertEqual(viewModel.selectedFile?.id.resolvingSymlinksInPath(), resolvedRenamedURL)
         XCTAssertEqual(
-            Set(viewModel.selectedImageIDs.map { $0.resolvingSymlinksInPath() }),
+            Set(viewModel.selectedFileIDs.map { $0.resolvingSymlinksInPath() }),
             [resolvedRenamedURL]
         )
         XCTAssertEqual(
-            viewModel.images.map(\.fileName),
+            viewModel.files.map(\.fileName),
             ["renamed.png", "second.png", "third.png"]
         )
     }
 
     func testRenameResortsFilesByName() async throws {
         viewModel.setSortOption(.fileName)
-        let first = try image(named: "first.png")
-        viewModel.selectImage(first)
+        let first = try file(named: "first.png")
+        viewModel.selectFile(first)
 
-        let didRename = await viewModel.renameImage(first, toBaseName: "z-last")
+        let didRename = await viewModel.renameFile(first, toBaseName: "z-last")
         XCTAssertTrue(didRename)
         try await waitForReload()
 
         XCTAssertEqual(
-            viewModel.images.map(\.fileName),
+            viewModel.files.map(\.fileName),
             ["second.png", "third.png", "z-last.png"]
         )
-        XCTAssertEqual(viewModel.selectedImage?.fileName, "z-last.png")
+        XCTAssertEqual(viewModel.selectedFile?.fileName, "z-last.png")
     }
 
-    func testMultipleSelectedImagesCannotEnterRenameMode() throws {
-        let first = try image(named: "first.png")
-        let second = try image(named: "second.png")
-        viewModel.selectImage(first)
-        viewModel.selectImage(second, mode: .toggle)
+    func testMultipleSelectedFilesCannotEnterRenameMode() throws {
+        let first = try file(named: "first.png")
+        let second = try file(named: "second.png")
+        viewModel.selectFile(first)
+        viewModel.selectFile(second, mode: .toggle)
 
-        XCTAssertNil(viewModel.selectedImageForRenaming)
+        XCTAssertNil(viewModel.selectedFileForRenaming)
     }
 
     func testRenameFailurePreservesFileAndSelection() async throws {
-        let first = try image(named: "first.png")
-        viewModel.selectImage(first)
+        let first = try file(named: "first.png")
+        viewModel.selectFile(first)
         fileActionManager.renameError = NSError(
             domain: "FloatPeekTests",
             code: 2,
             userInfo: [NSLocalizedDescriptionKey: "Rename failure"]
         )
 
-        let didRename = await viewModel.renameImage(first, toBaseName: "renamed")
+        let didRename = await viewModel.renameFile(first, toBaseName: "renamed")
         XCTAssertFalse(didRename)
 
         XCTAssertTrue(FileManager.default.fileExists(atPath: first.url.path))
-        XCTAssertEqual(viewModel.selectedImage?.id, first.id)
+        XCTAssertEqual(viewModel.selectedFile?.id, first.id)
         XCTAssertEqual(viewModel.fileActionError?.title, localized("Could not Rename File"))
         XCTAssertTrue(viewModel.fileActionError?.message.contains("Rename failure") == true)
     }
@@ -455,7 +455,7 @@ final class ImageBrowserFileActionTests: XCTestCase {
         XCTAssertTrue(FileManager.default.fileExists(atPath: renamedURL.path))
     }
 
-    func testChangingTabFolderReloadsImagesFromNewFolder() async throws {
+    func testChangingTabFolderReloadsFilesFromNewFolder() async throws {
         let anotherDirectory = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
         try FileManager.default.createDirectory(
@@ -472,7 +472,7 @@ final class ImageBrowserFileActionTests: XCTestCase {
         viewModel.setFolderURL(anotherDirectory)
         try await waitForReload()
 
-        XCTAssertEqual(viewModel.images.map(\.fileName), ["another.png"])
+        XCTAssertEqual(viewModel.files.map(\.fileName), ["another.png"])
     }
 
     private func createFile(named fileName: String) throws {
@@ -481,8 +481,8 @@ final class ImageBrowserFileActionTests: XCTestCase {
         )
     }
 
-    private func image(named fileName: String) throws -> ImageFile {
-        try XCTUnwrap(viewModel.images.first { $0.fileName == fileName })
+    private func file(named fileName: String) throws -> FileItem {
+        try XCTUnwrap(viewModel.files.first { $0.fileName == fileName })
     }
 
     private func waitForReload() async throws {

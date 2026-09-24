@@ -4,7 +4,7 @@ import SwiftUI
 struct FileDragInteractionView: NSViewRepresentable {
     let isSelected: Bool
     let dragURLs: () -> [URL]
-    let onSelect: (ImageBrowserViewModel.SelectionMode) -> Void
+    let onSelect: (FileBrowserViewModel.SelectionMode) -> Void
     let onAction: (FileAction) -> Void
 
     func makeNSView(context: Context) -> FileDragInteractionNSView {
@@ -28,7 +28,7 @@ struct FileDragInteractionView: NSViewRepresentable {
 final class FileDragInteractionNSView: NSView, NSDraggingSource {
     var isSelected = false
     var dragURLs: (() -> [URL])?
-    var onSelect: ((ImageBrowserViewModel.SelectionMode) -> Void)?
+    var onSelect: ((FileBrowserViewModel.SelectionMode) -> Void)?
     var onAction: ((FileAction) -> Void)?
 
     private var didStartDrag = false
@@ -158,7 +158,7 @@ final class FileDragInteractionNSView: NSView, NSDraggingSource {
         }
     }
 
-    private func selectionMode(for event: NSEvent) -> ImageBrowserViewModel.SelectionMode {
+    private func selectionMode(for event: NSEvent) -> FileBrowserViewModel.SelectionMode {
         if event.modifierFlags.contains(.shift) {
             return .range
         }

@@ -5,7 +5,7 @@ enum FilePresentationKind: Equatable {
     case fileIcon
 }
 
-struct ImageFile: Identifiable, Hashable {
+struct FileItem: Identifiable, Hashable {
     let id: URL
     let url: URL
     let fileName: String
@@ -64,7 +64,7 @@ enum FileSortOption: String, CaseIterable, Identifiable {
 }
 
 extension FileSortOption {
-    func areInIncreasingOrder(_ lhs: ImageFile, _ rhs: ImageFile) -> Bool {
+    func areInIncreasingOrder(_ lhs: FileItem, _ rhs: FileItem) -> Bool {
         switch self {
         case .addedAt:
             return Self.dateDescendingThenName(lhs.addedAt, rhs.addedAt, lhs: lhs, rhs: rhs)
@@ -78,8 +78,8 @@ extension FileSortOption {
     private static func dateDescendingThenName(
         _ lhsDate: Date?,
         _ rhsDate: Date?,
-        lhs: ImageFile,
-        rhs: ImageFile
+        lhs: FileItem,
+        rhs: FileItem
     ) -> Bool {
         switch (lhsDate, rhsDate) {
         case let (leftDate?, rightDate?) where leftDate != rightDate:
@@ -93,12 +93,12 @@ extension FileSortOption {
         }
     }
 
-    private static func nameAscending(_ lhs: ImageFile, _ rhs: ImageFile) -> Bool {
+    private static func nameAscending(_ lhs: FileItem, _ rhs: FileItem) -> Bool {
         lhs.fileName.localizedStandardCompare(rhs.fileName) == .orderedAscending
     }
 }
 
-extension Array where Element == ImageFile {
+extension Array where Element == FileItem {
     mutating func sort(by sortOption: FileSortOption) {
         sort(by: sortOption.areInIncreasingOrder)
     }

@@ -137,7 +137,7 @@ panel.allowsMultipleSelection = false
 
 保存成功時に新しい拡張子集合を次の両方へ反映する。
 
-- `ImageFileLoader` の列挙条件
+- `FileItemLoader` の列挙条件
 - `FolderMonitor` の監視条件
 
 反映後は現在のフォルダを再読み込みし、表示中であれば監視を再開する。
@@ -422,7 +422,7 @@ System Default では macOS の優先言語から英語または日本語を選�
 
 ## 4.2 状態表示
 
-`ImageBrowserViewModel.DisplayState`:
+`FileBrowserViewModel.DisplayState`:
 
 | 状態 | 表示 |
 | --- | --- |
@@ -515,10 +515,10 @@ Actions:
 
 # 5. データモデルと永続化
 
-## 5.1 ImageFile
+## 5.1 FileItem
 
 ```swift
-struct ImageFile: Identifiable, Hashable {
+struct FileItem: Identifiable, Hashable {
     let url: URL
     let addedAt: Date?
     let modifiedAt: Date?
@@ -543,7 +543,7 @@ struct FolderTab: Codable, Equatable, Identifiable {
 2. フォルダの最終パス要素
 3. `Untitled Folder` / `名称未設定のフォルダ`
 
-## 5.3 ImageSelection
+## 5.3 FileSelection
 
 保持状態:
 
@@ -590,7 +590,7 @@ Carbon 用キーコードと修飾キーを保持し、表示名生成、`NSEven
 | 状態 | 所有者 |
 | --- | --- |
 | フォルダ一覧・選択中フォルダ | `FolderTabManager` |
-| ファイル一覧・ソート・選択・操作状態 | `ImageBrowserViewModel` |
+| ファイル一覧・ソート・選択・操作状態 | `FileBrowserViewModel` |
 | 設定画面の下書き | `SettingsViewModel` |
 | 表示言語 | `LocalizationManager` |
 | 設定画面とウィンドウ可視性イベント | `AppCoordinator` |
@@ -606,8 +606,8 @@ Carbon 用キーコードと修飾キーを保持し、表示名生成、`NSEven
 | `FloatPeekApp` | Scene、環境オブジェクト、設定コマンド、起動時ショートカット登録 |
 | `ContentView` | メイン画面構成、キー操作、Quick Look 連携、設定画面生成 |
 | `HeaderView` | フォルダ切替、ソート選択 |
-| `ImageGridView` | 列構成、タイル配置、主選択へのスクロール |
-| `ImageFileTile` | サムネイルまたはアイコン、ファイル名、選択表示 |
+| `FileGridView` | 列構成、タイル配置、主選択へのスクロール |
+| `FileItemTile` | サムネイルまたはアイコン、ファイル名、選択表示 |
 | `SettingsView` | 設定下書きの編集と保存・破棄 |
 | `StateMessageView` | 空・エラー状態表示 |
 
@@ -615,10 +615,10 @@ Carbon 用キーコードと修飾キーを保持し、表示名生成、`NSEven
 
 | コンポーネント | 責務 |
 | --- | --- |
-| `ImageBrowserViewModel` | 非同期読込、表示状態、ソート、選択、ファイル操作、監視制御 |
+| `FileBrowserViewModel` | 非同期読込、表示状態、ソート、選択、ファイル操作、監視制御 |
 | `SettingsViewModel` | 設定下書き、フォルダ編集、検証、保存時反映 |
 | `FolderTabManager` | フォルダ配列と選択の永続化、旧設定移行 |
-| `ImageSelection` | 主選択、集合、アンカー、移動と整合 |
+| `FileSelection` | 主選択、集合、アンカー、移動と整合 |
 | `AppSettings` | 保存キー、既定値、表示設定の保存・読込 |
 | `LocalizationManager` | 言語解決、文字列取得、locale 提供 |
 
@@ -626,7 +626,7 @@ Carbon 用キーコードと修飾キーを保持し、表示名生成、`NSEven
 
 | コンポーネント | 責務 |
 | --- | --- |
-| `ImageFileLoader` | 直下ファイル列挙、拡張子フィルタ、日付取得、ソート |
+| `FileItemLoader` | 直下ファイル列挙、拡張子フィルタ、日付取得、ソート |
 | `FolderMonitor` | FSEvents、ルート監視、debounce |
 | `ThumbnailProvider` | 非同期サムネイル生成、システムアイコン取得、メモリキャッシュ |
 | `FileOpener` | 既定アプリで開く |
@@ -648,7 +648,7 @@ Carbon 用キーコードと修飾キーを保持し、表示名生成、`NSEven
 ```text
 FolderTabManager.selectTab
   → ContentView が selectedTabID の変更を監視
-  → ImageBrowserViewModel.setFolderURL
+  → FileBrowserViewModel.setFolderURL
   → 現在の読込をキャンセル
   → 新フォルダを非同期読込
   → 旧監視を停止
@@ -658,7 +658,7 @@ FolderTabManager.selectTab
 
 ## 7.2 ファイル読込
 
-`ImageBrowserViewModel` は `@MainActor` で UI 状態を管理する。ファイル列挙は `ImageFileLoader.loadImagesAsync` が detached task で実行する。
+`FileBrowserViewModel` は `@MainActor` で UI 状態を管理する。ファイル列挙は `FileItemLoader.loadFilesAsync` が detached task で実行する。
 
 読込ごとに generation を増やし、完了時に次を検証する。
 
@@ -677,7 +677,7 @@ SettingsView の下書き
   → 成功時だけ各設定を永続化
   → FolderTabManager / LocalizationManager へ反映
   → 画像拡大設定を ContentView へ反映
-  → 拡張子集合を ImageBrowserViewModel へ反映
+  → 拡張子集合を FileBrowserViewModel へ反映
   → 必要に応じて再読込・監視再開
 ```
 
@@ -695,7 +695,7 @@ SettingsView の下書き
 - FSEvents callback から UI へは `Task { @MainActor in ... }`
 - サムネイル生成は continuation で async 化
 - Task cancellation 時は Quick Look Thumbnail request もキャンセル
-- `FolderMonitor` と `ImageFileLoader` は Sendable 境界を明示
+- `FolderMonitor` と `FileItemLoader` は Sendable 境界を明示
 
 # 8. エラー処理
 
@@ -801,10 +801,10 @@ env DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
 | --- | --- |
 | `AppLifecycleTests` | 環境、言語、フォルダ永続化・移行、ウィンドウ |
 | `AppCoordinatorTests` | 設定表示、可視性 revision |
-| `ImageFileLoaderTests` | 拡張子フィルタ、ソート、アクセスエラー |
+| `FileItemLoaderTests` | 拡張子フィルタ、ソート、アクセスエラー |
 | `FolderMonitorTests` | 変更通知、debounce、除外条件、停止・切替 |
-| `ImageSelectionTests` | 単一・複数・範囲選択、移動、整合 |
-| `ImageBrowserFileActionTests` | コピー、ゴミ箱、コンテキスト、キー操作 |
+| `FileSelectionTests` | 単一・複数・範囲選択、移動、整合 |
+| `FileBrowserActionTests` | コピー、ゴミ箱、コンテキスト、キー操作 |
 | `QuickLookManagerTests` | 表示終了条件 |
 | `ThumbnailProviderTests` | aspect fit |
 | `SettingsViewModelTests` | 下書き、保存、失敗時非反映、拡張子設定 |

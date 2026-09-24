@@ -213,7 +213,7 @@ final class FolderMonitorTests: XCTestCase {
 
     private func startMonitoring(
         folderURL: URL,
-        displayedFileExtensions: Set<String> = ImageFileLoader.supportedExtensions,
+        displayedFileExtensions: Set<String> = FileItemLoader.supportedExtensions,
         onChange: @escaping @Sendable () -> Void
     ) async {
         let didStartMonitoring = await monitor.startMonitoring(
@@ -226,8 +226,8 @@ final class FolderMonitorTests: XCTestCase {
 }
 
 @MainActor
-final class ImageBrowserMonitoringTests: XCTestCase {
-    func testMonitorChangeReloadsImages() async throws {
+final class FileBrowserMonitoringTests: XCTestCase {
+    func testMonitorChangeReloadsFiles() async throws {
         let temporaryDirectory = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
         try FileManager.default.createDirectory(
@@ -239,7 +239,7 @@ final class ImageBrowserMonitoringTests: XCTestCase {
         }
 
         let monitor = TestFolderMonitor()
-        let viewModel = ImageBrowserViewModel(
+        let viewModel = FileBrowserViewModel(
             initialFolderURL: temporaryDirectory,
             folderMonitor: monitor
         )
@@ -249,12 +249,12 @@ final class ImageBrowserMonitoringTests: XCTestCase {
         )
 
         monitor.sendChange()
-        for _ in 0..<100 where viewModel.isReloading || viewModel.images.isEmpty {
+        for _ in 0..<100 where viewModel.isReloading || viewModel.files.isEmpty {
             try await Task.sleep(nanoseconds: 10_000_000)
         }
 
         XCTAssertFalse(viewModel.isReloading)
-        XCTAssertEqual(viewModel.images.map(\.fileName), ["new.png"])
+        XCTAssertEqual(viewModel.files.map(\.fileName), ["new.png"])
     }
 }
 

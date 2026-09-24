@@ -1,15 +1,15 @@
 import SwiftUI
 
 struct ContentView: View {
-    @StateObject private var viewModel = ImageBrowserViewModel()
+    @StateObject private var viewModel = FileBrowserViewModel()
     @EnvironmentObject private var localization: LocalizationManager
     @EnvironmentObject private var preferences: AppPreferences
     @EnvironmentObject private var tabManager: FolderTabManager
     @EnvironmentObject private var appCoordinator: AppCoordinator
     @EnvironmentObject private var updateManager: UpdateManager
     @State private var gridColumnCount = 1
-    @State private var scrollTargetImageID: ImageFile.ID?
-    @State private var renamingImageID: ImageFile.ID?
+    @State private var scrollTargetFileID: FileItem.ID?
+    @State private var renamingFileID: FileItem.ID?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -29,30 +29,30 @@ struct ContentView: View {
                     ProgressView(localization.localized("Loading…"))
                 case .loaded:
                     GeometryReader { geometry in
-                        ImageGridView(
-                            images: viewModel.images,
-                            selectedImageIDs: viewModel.selectedImageIDs,
-                            scrollTargetImageID: scrollTargetImageID,
-                            renamingImageID: renamingImageID,
+                        FileGridView(
+                            files: viewModel.files,
+                            selectedFileIDs: viewModel.selectedFileIDs,
+                            scrollTargetFileID: scrollTargetFileID,
+                            renamingFileID: renamingFileID,
                             columnCount: displayedGridColumnCount,
                             scaleImagesWithWindow: preferences.scaleImagesWithWindow,
                             availableWidth: geometry.size.width,
-                            onSelect: { image, mode in
-                                scrollTargetImageID = nil
-                                viewModel.selectImage(image, mode: mode)
+                            onSelect: { file, mode in
+                                scrollTargetFileID = nil
+                                viewModel.selectFile(file, mode: mode)
                             },
                             dragURLs: viewModel.actionURLs(for:),
-                            onAction: { image, action in
-                                viewModel.performFileAction(action, for: image)
+                            onAction: { file, action in
+                                viewModel.performFileAction(action, for: file)
                             },
-                            onRename: { image, baseName in
-                                renamingImageID = nil
+                            onRename: { file, baseName in
+                                renamingFileID = nil
                                 Task {
-                                    await viewModel.renameImage(image, toBaseName: baseName)
+                                    await viewModel.renameFile(file, toBaseName: baseName)
                                 }
                             },
                             onCancelRename: {
-                                renamingImageID = nil
+                                renamingFileID = nil
                             }
                         )
                         .onAppear {
@@ -79,7 +79,7 @@ struct ContentView: View {
                         title: localization.localized("Cannot access folder"),
                         message: localization.localized("Choose another folder.")
                     )
-                case .noImages:
+                case .noFiles:
                     StateMessageView(
                         title: localization.localized("No supported files found"),
                         message: localization.localized(
@@ -114,22 +114,22 @@ struct ContentView: View {
             }
             .frame(width: 0, height: 0)
         )
-        .onChange(of: viewModel.selectedImage) { _, selectedImage in
-            guard let selectedImage else {
+        .onChange(of: viewModel.selectedFile) { _, selectedFile in
+            guard let selectedFile else {
                 QuickLookManager.shared.closePreviewIfVisible()
                 return
             }
 
-            QuickLookManager.shared.updatePreviewIfVisible(fileURL: selectedImage.url)
+            QuickLookManager.shared.updatePreviewIfVisible(fileURL: selectedFile.url)
         }
         .onChange(of: viewModel.folderURL) { _, _ in
-            renamingImageID = nil
+            renamingFileID = nil
             ThumbnailProvider.shared.clearCache()
         }
-        .onChange(of: viewModel.images) { _, images in
-            if let renamingImageID,
-               !images.contains(where: { $0.id == renamingImageID }) {
-                self.renamingImageID = nil
+        .onChange(of: viewModel.files) { _, files in
+            if let renamingFileID,
+               !files.contains(where: { $0.id == renamingFileID }) {
+                self.renamingFileID = nil
             }
         }
         .onChange(of: preferences.displayedFileExtensions) { _, displayedFileExtensions in
@@ -182,23 +182,23 @@ struct ContentView: View {
             return false
         }
 
-        guard renamingImageID == nil else {
+        guard renamingFileID == nil else {
             return false
         }
 
         switch key {
         case .return:
-            guard let selectedImage = viewModel.selectedImageForRenaming else {
-                return !viewModel.selectedImageIDs.isEmpty
+            guard let selectedFile = viewModel.selectedFileForRenaming else {
+                return !viewModel.selectedFileIDs.isEmpty
             }
 
-            renamingImageID = selectedImage.id
+            renamingFileID = selectedFile.id
             return true
         case .escape:
             WindowManager.shared.hideWindow()
             return true
         case .space:
-            return previewSelectedImage()
+            return previewSelectedFile()
         case .arrow(let direction, let extendingSelection):
             let didMove = viewModel.moveSelection(
                 direction,
@@ -208,11 +208,11 @@ struct ContentView: View {
             updateScrollTargetAfterKeyboardSelection(didMove)
             return didMove
         case .selectAll:
-            return viewModel.selectAllImages()
+            return viewModel.selectAllFiles()
         case .copy:
-            return viewModel.copySelectedImages()
+            return viewModel.copySelectedFiles()
         case .moveToTrash:
-            return viewModel.moveSelectedImagesToTrash()
+            return viewModel.moveSelectedFilesToTrash()
         case .selectNextTab:
             return tabManager.selectNextTab()
         case .selectPreviousTab:
@@ -221,12 +221,12 @@ struct ContentView: View {
     }
 
     @discardableResult
-    private func previewSelectedImage() -> Bool {
-        guard let selectedImage = viewModel.selectedImage else {
+    private func previewSelectedFile() -> Bool {
+        guard let selectedFile = viewModel.selectedFile else {
             return false
         }
 
-        return QuickLookManager.shared.togglePreview(fileURL: selectedImage.url)
+        return QuickLookManager.shared.togglePreview(fileURL: selectedFile.url)
     }
 
     private func updateScrollTargetAfterKeyboardSelection(_ didMove: Bool) {
@@ -234,11 +234,11 @@ struct ContentView: View {
             return
         }
 
-        scrollTargetImageID = viewModel.selectedImage?.id
+        scrollTargetFileID = viewModel.selectedFile?.id
     }
 
     private func updateGridColumnCount(for width: CGFloat) {
-        gridColumnCount = ImageGridLayout.columnCount(forAvailableWidth: width)
+        gridColumnCount = FileGridLayout.columnCount(forAvailableWidth: width)
     }
 
     private var displayedGridColumnCount: Int {

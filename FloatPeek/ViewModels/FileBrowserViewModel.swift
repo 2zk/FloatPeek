@@ -15,28 +15,28 @@ struct FileActionError: Equatable {
 }
 
 @MainActor
-final class ImageBrowserViewModel: ObservableObject {
-    typealias SelectionDirection = ImageSelection.Direction
-    typealias SelectionMode = ImageSelection.Mode
+final class FileBrowserViewModel: ObservableObject {
+    typealias SelectionDirection = FileSelection.Direction
+    typealias SelectionMode = FileSelection.Mode
 
     enum DisplayState: Equatable {
         case loading
         case noFolderSelected
         case cannotAccessFolder
-        case noImages
+        case noFiles
         case loaded
     }
 
     @Published private(set) var folderURL: URL?
-    @Published private(set) var images: [ImageFile] = []
+    @Published private(set) var files: [FileItem] = []
     @Published private(set) var displayState: DisplayState = .noFolderSelected
     @Published private(set) var sortOption: FileSortOption = .addedAt
     @Published private(set) var isReloading = false
     @Published private(set) var isMovingToTrash = false
     @Published private(set) var fileActionError: FileActionError?
-    @Published private var selection = ImageSelection()
+    @Published private var selection = FileSelection()
 
-    private var imageFileLoader: ImageFileLoader
+    private var fileLoader: FileItemLoader
     private let fileOpener: FileOpening
     private let fileActionManager: FileActionHandling
     private let filePreviewer: FilePreviewing
@@ -50,7 +50,7 @@ final class ImageBrowserViewModel: ObservableObject {
 
     init(
         initialFolderURL: URL? = nil,
-        imageFileLoader: ImageFileLoader = ImageFileLoader(
+        fileLoader: FileItemLoader = FileItemLoader(
             displayedFileExtensions: AppPreferences.shared.displayedFileExtensions
         ),
         fileOpener: FileOpening = FileOpener(),
@@ -58,7 +58,7 @@ final class ImageBrowserViewModel: ObservableObject {
         filePreviewer: FilePreviewing = QuickLookManager.shared,
         folderMonitor: FolderMonitoring = FolderMonitor()
     ) {
-        self.imageFileLoader = imageFileLoader
+        self.fileLoader = fileLoader
         self.fileOpener = fileOpener
         self.fileActionManager = fileActionManager
         self.filePreviewer = filePreviewer
@@ -68,36 +68,36 @@ final class ImageBrowserViewModel: ObservableObject {
     }
 
     var selectedFileName: String {
-        switch selectedImageIDs.count {
+        switch selectedFileIDs.count {
         case 0:
             return localized("None")
         case 1:
-            return selectedImage?.fileName ?? selectedImages.first?.fileName ?? localized("None")
+            return selectedFile?.fileName ?? selectedFiles.first?.fileName ?? localized("None")
         default:
-            return localizedFormat("%d files", selectedImageIDs.count)
+            return localizedFormat("%d files", selectedFileIDs.count)
         }
     }
 
-    var selectedImage: ImageFile? {
+    var selectedFile: FileItem? {
         guard let focusedID = selection.focusedID else {
             return nil
         }
-        return images.first { $0.id == focusedID }
+        return files.first { $0.id == focusedID }
     }
 
-    var selectedImageIDs: Set<ImageFile.ID> {
+    var selectedFileIDs: Set<FileItem.ID> {
         selection.selectedIDs
     }
 
-    var selectedImages: [ImageFile] {
-        images.filter { selectedImageIDs.contains($0.id) }
+    var selectedFiles: [FileItem] {
+        files.filter { selectedFileIDs.contains($0.id) }
     }
 
-    var selectedImageForRenaming: ImageFile? {
-        guard selectedImageIDs.count == 1 else {
+    var selectedFileForRenaming: FileItem? {
+        guard selectedFileIDs.count == 1 else {
             return nil
         }
-        return selectedImage
+        return selectedFile
     }
 
     var isShowingFileActionError: Bool {
@@ -128,11 +128,11 @@ final class ImageBrowserViewModel: ObservableObject {
     }
 
     func setDisplayedFileExtensions(_ displayedFileExtensions: Set<String>) {
-        guard imageFileLoader.displayedFileExtensions != displayedFileExtensions else {
+        guard fileLoader.displayedFileExtensions != displayedFileExtensions else {
             return
         }
 
-        imageFileLoader.displayedFileExtensions = displayedFileExtensions
+        fileLoader.displayedFileExtensions = displayedFileExtensions
         reload()
 
         if shouldMonitorFolder {
@@ -156,22 +156,22 @@ final class ImageBrowserViewModel: ObservableObject {
 
         guard let folderURL else {
             isReloading = false
-            images = []
+            files = []
             selection.clear()
             displayState = .noFolderSelected
             return
         }
 
         isReloading = true
-        if images.isEmpty {
+        if files.isEmpty {
             displayState = .loading
         }
 
-        let imageFileLoader = imageFileLoader
+        let fileLoader = fileLoader
         let requestedSortOption = sortOption
         reloadTask = Task { [weak self] in
             do {
-                var loadedImages = try await imageFileLoader.loadImagesAsync(
+                var loadedFiles = try await fileLoader.loadFilesAsync(
                     in: folderURL,
                     sortedBy: requestedSortOption
                 )
@@ -184,11 +184,11 @@ final class ImageBrowserViewModel: ObservableObject {
                 }
 
                 if self.sortOption != requestedSortOption {
-                    loadedImages.sort(by: self.sortOption)
+                    loadedFiles.sort(by: self.sortOption)
                 }
-                self.images = loadedImages
+                self.files = loadedFiles
                 self.reconcileSelection()
-                self.displayState = loadedImages.isEmpty ? .noImages : .loaded
+                self.displayState = loadedFiles.isEmpty ? .noFiles : .loaded
                 self.isReloading = false
             } catch is CancellationError {
                 guard let self, generation == self.reloadGeneration else {
@@ -201,20 +201,20 @@ final class ImageBrowserViewModel: ObservableObject {
                       self.folderURL == folderURL else {
                     return
                 }
-                self.clearImagesForLoadFailure()
+                self.clearFilesForLoadFailure()
             }
         }
     }
 
-    func selectImage(_ image: ImageFile, mode: SelectionMode = .replace) {
+    func selectFile(_ file: FileItem, mode: SelectionMode = .replace) {
         changeSelection { selection, orderedIDs in
-            selection.select(image.id, mode: mode, orderedIDs: orderedIDs)
+            selection.select(file.id, mode: mode, orderedIDs: orderedIDs)
             return true
         }
     }
 
     @discardableResult
-    func selectAllImages() -> Bool {
+    func selectAllFiles() -> Bool {
         changeSelection { selection, orderedIDs in
             selection.selectAll(orderedIDs: orderedIDs)
         }
@@ -226,7 +226,7 @@ final class ImageBrowserViewModel: ObservableObject {
         }
 
         self.sortOption = sortOption
-        images.sort(by: sortOption)
+        files.sort(by: sortOption)
         reconcileSelection()
     }
 
@@ -247,79 +247,79 @@ final class ImageBrowserViewModel: ObservableObject {
     }
 
     /// 右クリックメニューなどから、指定したファイルを起点に操作を実行する
-    func performFileAction(_ action: FileAction, for image: ImageFile) {
+    func performFileAction(_ action: FileAction, for file: FileItem) {
         switch action {
         case .open:
-            openImage(image)
+            openFile(file)
         case .preview:
-            previewImage(image)
+            previewFile(file)
         case .copy:
-            copyImages(for: image)
+            copyFiles(for: file)
         case .copyPath:
-            copyPaths(for: image)
+            copyPaths(for: file)
         case .revealInFinder:
-            revealInFinder(image)
+            revealInFinder(file)
         case .moveToTrash:
-            moveImagesToTrash(for: image)
+            moveFilesToTrash(for: file)
         }
     }
 
-    func openImage(_ image: ImageFile) {
-        selectImage(image)
-        fileOpener.open(image.url)
+    func openFile(_ file: FileItem) {
+        selectFile(file)
+        fileOpener.open(file.url)
     }
 
     @discardableResult
-    func previewImage(_ image: ImageFile) -> Bool {
-        if !selectedImageIDs.contains(image.id) {
-            selectImage(image)
+    func previewFile(_ file: FileItem) -> Bool {
+        if !selectedFileIDs.contains(file.id) {
+            selectFile(file)
         }
-        return filePreviewer.preview(fileURL: image.url)
+        return filePreviewer.preview(fileURL: file.url)
     }
 
     /// 選択中のファイルなら選択中の全ファイル、そうでなければ指定したファイルだけを対象にする
-    func actionURLs(for image: ImageFile) -> [URL] {
-        actionImages(for: image).map(\.url)
+    func actionURLs(for file: FileItem) -> [URL] {
+        actionFiles(for: file).map(\.url)
     }
 
     @discardableResult
-    func copySelectedImages() -> Bool {
-        fileActionManager.copyFiles(selectedImages.map(\.url))
+    func copySelectedFiles() -> Bool {
+        fileActionManager.copyFiles(selectedFiles.map(\.url))
     }
 
     @discardableResult
-    func copyImages(for image: ImageFile) -> Bool {
-        fileActionManager.copyFiles(actionURLs(for: image))
+    func copyFiles(for file: FileItem) -> Bool {
+        fileActionManager.copyFiles(actionURLs(for: file))
     }
 
     @discardableResult
-    func copyPaths(for image: ImageFile) -> Bool {
-        fileActionManager.copyPaths(actionURLs(for: image))
+    func copyPaths(for file: FileItem) -> Bool {
+        fileActionManager.copyPaths(actionURLs(for: file))
     }
 
     @discardableResult
-    func revealInFinder(_ image: ImageFile) -> Bool {
-        fileActionManager.revealInFinder(actionURLs(for: image))
+    func revealInFinder(_ file: FileItem) -> Bool {
+        fileActionManager.revealInFinder(actionURLs(for: file))
     }
 
     @discardableResult
-    func moveSelectedImagesToTrash() -> Bool {
-        moveToTrash(selectedImages)
+    func moveSelectedFilesToTrash() -> Bool {
+        moveToTrash(selectedFiles)
     }
 
     @discardableResult
-    func moveImagesToTrash(for image: ImageFile) -> Bool {
-        moveToTrash(actionImages(for: image))
+    func moveFilesToTrash(for file: FileItem) -> Bool {
+        moveToTrash(actionFiles(for: file))
     }
 
     @discardableResult
-    func renameImage(_ image: ImageFile, toBaseName baseName: String) async -> Bool {
+    func renameFile(_ file: FileItem, toBaseName baseName: String) async -> Bool {
         guard !isRenamingFile,
-              images.contains(where: { $0.id == image.id }) else {
+              files.contains(where: { $0.id == file.id }) else {
             return false
         }
 
-        let newFileName = image.fileName(withBaseName: baseName)
+        let newFileName = file.fileName(withBaseName: baseName)
         let requestedFolderURL = folderURL
         let fileActionManager = fileActionManager
 
@@ -328,22 +328,22 @@ final class ImageBrowserViewModel: ObservableObject {
 
         do {
             let renamedURL = try await fileActionManager.renameFile(
-                image.url,
+                file.url,
                 toFileName: newFileName
             )
             isRenamingFile = false
 
             guard folderURL == requestedFolderURL,
-                  let imageIndex = images.firstIndex(where: { $0.id == image.id }) else {
+                  let fileIndex = files.firstIndex(where: { $0.id == file.id }) else {
                 return true
             }
 
-            images[imageIndex] = ImageFile(
+            files[fileIndex] = FileItem(
                 url: renamedURL,
-                addedAt: image.addedAt,
-                modifiedAt: image.modifiedAt
+                addedAt: file.addedAt,
+                modifiedAt: file.modifiedAt
             )
-            images.sort(by: sortOption)
+            files.sort(by: sortOption)
             changeSelection { selection, orderedIDs in
                 selection.select(renamedURL, mode: .replace, orderedIDs: orderedIDs)
                 return true
@@ -357,7 +357,7 @@ final class ImageBrowserViewModel: ObservableObject {
                 title: localized("Could not Rename File"),
                 message: localizedFormat(
                     "%@ could not be renamed.\n%@",
-                    image.fileName,
+                    file.fileName,
                     renameErrorDescription(error)
                 )
             )
@@ -365,21 +365,21 @@ final class ImageBrowserViewModel: ObservableObject {
         }
     }
 
-    private func moveToTrash(_ targetImages: [ImageFile]) -> Bool {
+    private func moveToTrash(_ targetFiles: [FileItem]) -> Bool {
         guard !isMovingToTrash else {
             return true
         }
 
-        guard !targetImages.isEmpty else {
+        guard !targetFiles.isEmpty else {
             return false
         }
 
-        let targetIDs = Set(targetImages.map(\.id))
+        let targetIDs = Set(targetFiles.map(\.id))
         let requestedFolderURL = folderURL
         let focusedIDAtRequest = selection.focusedID
         let originalFocusedIndex = focusedIDAtRequest
-            .flatMap { focusedID in images.firstIndex(where: { $0.id == focusedID }) }
-            ?? images.firstIndex(where: { targetIDs.contains($0.id) })
+            .flatMap { focusedID in files.firstIndex(where: { $0.id == focusedID }) }
+            ?? files.firstIndex(where: { targetIDs.contains($0.id) })
             ?? 0
         let selectionRevisionAtRequest = selectionRevision
         let fileActionManager = fileActionManager
@@ -389,7 +389,7 @@ final class ImageBrowserViewModel: ObservableObject {
 
         Task { [weak self] in
             do {
-                try await fileActionManager.moveToTrash(targetImages.map(\.url))
+                try await fileActionManager.moveToTrash(targetFiles.map(\.url))
 
                 guard let self else {
                     return
@@ -400,7 +400,7 @@ final class ImageBrowserViewModel: ObservableObject {
                     return
                 }
 
-                self.removeRecycledImages(
+                self.removeRecycledFiles(
                     withIDs: targetIDs,
                     originalFocusedIndex: originalFocusedIndex,
                     shouldAdvanceSelection: focusedIDAtRequest.map(targetIDs.contains) == true
@@ -414,7 +414,7 @@ final class ImageBrowserViewModel: ObservableObject {
 
                 self.isMovingToTrash = false
                 self.fileActionError = Self.moveToTrashError(
-                    for: targetImages,
+                    for: targetFiles,
                     error: error
                 )
 
@@ -432,20 +432,20 @@ final class ImageBrowserViewModel: ObservableObject {
     }
 
     private static func moveToTrashError(
-        for targetImages: [ImageFile],
+        for targetFiles: [FileItem],
         error: Error
     ) -> FileActionError {
         let message: String
-        if targetImages.count == 1, let targetImage = targetImages.first {
+        if targetFiles.count == 1, let targetFile = targetFiles.first {
             message = localizedFormat(
                 "%@ could not be moved to the Trash.\n%@",
-                targetImage.fileName,
+                targetFile.fileName,
                 error.localizedDescription
             )
         } else {
             message = localizedFormat(
                 "%d files could not be moved to the Trash.\n%@",
-                targetImages.count,
+                targetFiles.count,
                 error.localizedDescription
             )
         }
@@ -466,24 +466,24 @@ final class ImageBrowserViewModel: ObservableObject {
     }
 
     private func reconcileSelection() {
-        selection.reconcile(orderedIDs: images.map(\.id))
+        selection.reconcile(orderedIDs: files.map(\.id))
     }
 
     /// 利用者の操作による選択変更を反映し、変更があれば選択の世代を進める。
     /// ゴミ箱移動後に選択を自動で進めてよいかの判定に世代を使う。
     @discardableResult
     private func changeSelection(
-        _ change: (inout ImageSelection, _ orderedIDs: [ImageFile.ID]) -> Bool
+        _ change: (inout FileSelection, _ orderedIDs: [FileItem.ID]) -> Bool
     ) -> Bool {
-        let didChange = change(&selection, images.map(\.id))
+        let didChange = change(&selection, files.map(\.id))
         if didChange {
             selectionRevision += 1
         }
         return didChange
     }
 
-    private func clearImagesForLoadFailure() {
-        images = []
+    private func clearFilesForLoadFailure() {
+        files = []
         selection.clear()
         displayState = .cannotAccessFolder
         isReloading = false
@@ -494,7 +494,7 @@ final class ImageBrowserViewModel: ObservableObject {
         let folderMonitor = folderMonitor
         let folderURL = folderURL
         let shouldMonitorFolder = shouldMonitorFolder
-        let displayedFileExtensions = imageFileLoader.displayedFileExtensions
+        let displayedFileExtensions = fileLoader.displayedFileExtensions
 
         monitoringTask = Task { [weak self] in
             await folderMonitor.stopMonitoring()
@@ -516,20 +516,20 @@ final class ImageBrowserViewModel: ObservableObject {
         }
     }
 
-    private func actionImages(for image: ImageFile) -> [ImageFile] {
-        guard selectedImageIDs.contains(image.id) else {
-            return [image]
+    private func actionFiles(for file: FileItem) -> [FileItem] {
+        guard selectedFileIDs.contains(file.id) else {
+            return [file]
         }
 
-        return selectedImages
+        return selectedFiles
     }
 
-    private func removeRecycledImages(
-        withIDs recycledIDs: Set<ImageFile.ID>,
+    private func removeRecycledFiles(
+        withIDs recycledIDs: Set<FileItem.ID>,
         originalFocusedIndex: Int,
         shouldAdvanceSelection: Bool
     ) {
-        images.removeAll { recycledIDs.contains($0.id) }
+        files.removeAll { recycledIDs.contains($0.id) }
 
         changeSelection { selection, orderedIDs in
             if !shouldAdvanceSelection {
@@ -542,7 +542,7 @@ final class ImageBrowserViewModel: ObservableObject {
             }
             return true
         }
-        displayState = images.isEmpty ? .noImages : .loaded
+        displayState = files.isEmpty ? .noFiles : .loaded
     }
 
 }

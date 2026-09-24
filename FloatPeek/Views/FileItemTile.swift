@@ -1,14 +1,14 @@
 import AppKit
 import SwiftUI
 
-struct ImageFileTile: View {
-    let image: ImageFile
+struct FileItemTile: View {
+    let file: FileItem
     let isSelected: Bool
     let isRenaming: Bool
     let thumbnailHeight: CGFloat
     let thumbnailSize: CGSize
     let dragURLs: () -> [URL]
-    let onSelect: (ImageBrowserViewModel.SelectionMode) -> Void
+    let onSelect: (FileBrowserViewModel.SelectionMode) -> Void
     let onAction: (FileAction) -> Void
     let onRename: (String) -> Void
     let onCancelRename: () -> Void
@@ -18,18 +18,18 @@ struct ImageFileTile: View {
     @FocusState private var isRenameFieldFocused: Bool
 
     init(
-        image: ImageFile,
+        file: FileItem,
         isSelected: Bool,
         isRenaming: Bool,
         thumbnailHeight: CGFloat,
         thumbnailSize: CGSize,
         dragURLs: @escaping () -> [URL],
-        onSelect: @escaping (ImageBrowserViewModel.SelectionMode) -> Void,
+        onSelect: @escaping (FileBrowserViewModel.SelectionMode) -> Void,
         onAction: @escaping (FileAction) -> Void,
         onRename: @escaping (String) -> Void,
         onCancelRename: @escaping () -> Void
     ) {
-        self.image = image
+        self.file = file
         self.isSelected = isSelected
         self.isRenaming = isRenaming
         self.thumbnailHeight = thumbnailHeight
@@ -39,7 +39,7 @@ struct ImageFileTile: View {
         self.onAction = onAction
         self.onRename = onRename
         self.onCancelRename = onCancelRename
-        _renameDraft = State(initialValue: image.baseName)
+        _renameDraft = State(initialValue: file.baseName)
     }
 
     var body: some View {
@@ -48,10 +48,10 @@ struct ImageFileTile: View {
                 RoundedRectangle(cornerRadius: 10)
                     .fill(.quaternary)
 
-                if image.presentationKind == .fileIcon {
+                if file.presentationKind == .fileIcon {
                     Image(
                         nsImage: ThumbnailProvider.shared.fileIcon(
-                            forFileExtension: image.fileExtension
+                            forFileExtension: file.fileExtension
                         )
                     )
                     .resizable()
@@ -86,14 +86,14 @@ struct ImageFileTile: View {
             .allowsHitTesting(!isRenaming)
         )
         .task(id: thumbnailRequest) {
-            guard image.presentationKind == .thumbnail else {
+            guard file.presentationKind == .thumbnail else {
                 return
             }
 
             thumbnailState = .loading
 
             if let loadedThumbnail = await ThumbnailProvider.shared.thumbnail(
-                for: image,
+                for: file,
                 size: thumbnailSize
             ) {
                 guard !Task.isCancelled else {
@@ -112,7 +112,7 @@ struct ImageFileTile: View {
                 return
             }
 
-            renameDraft = image.baseName
+            renameDraft = file.baseName
         }
     }
 
@@ -130,8 +130,8 @@ struct ImageFileTile: View {
                         onCancelRename()
                     }
 
-                if !image.fileExtension.isEmpty {
-                    Text(".\(image.fileExtension)")
+                if !file.fileExtension.isEmpty {
+                    Text(".\(file.fileExtension)")
                 }
             }
             .font(.caption)
@@ -149,7 +149,7 @@ struct ImageFileTile: View {
                 }
             }
         } else {
-            Text(image.fileName)
+            Text(file.fileName)
                 .font(.caption)
                 .lineLimit(2)
                 .multilineTextAlignment(.center)
@@ -189,15 +189,15 @@ struct ImageFileTile: View {
     }
 
     private var thumbnailRequest: ThumbnailRequest? {
-        guard image.presentationKind == .thumbnail else {
+        guard file.presentationKind == .thumbnail else {
             return nil
         }
-        return ThumbnailRequest(image: image, size: thumbnailSize)
+        return ThumbnailRequest(file: file, size: thumbnailSize)
     }
 }
 
 private struct ThumbnailRequest: Hashable {
-    let image: ImageFile
+    let file: FileItem
     let size: CGSize
 }
 

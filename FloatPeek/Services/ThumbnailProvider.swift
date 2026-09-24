@@ -16,16 +16,16 @@ final class ThumbnailProvider {
         cache.totalCostLimit = 64 * 1_024 * 1_024
     }
 
-    func thumbnail(for imageFile: ImageFile, size: CGSize) async -> NSImage? {
+    func thumbnail(for file: FileItem, size: CGSize) async -> NSImage? {
         let scale = NSScreen.main?.backingScaleFactor ?? 2
-        let cacheKey = cacheKey(for: imageFile, size: size, scale: scale)
+        let cacheKey = cacheKey(for: file, size: size, scale: scale)
 
         if let cachedImage = cache.object(forKey: cacheKey) {
             return cachedImage
         }
 
         let request = QLThumbnailGenerator.Request(
-            fileAt: imageFile.url,
+            fileAt: file.url,
             size: size,
             scale: scale,
             representationTypes: .thumbnail
@@ -40,7 +40,7 @@ final class ThumbnailProvider {
                 return nil
             }
 
-            let fileURL = imageFile.url
+            let fileURL = file.url
             // フォールバックは画像全体の読み込みを伴うため、メインスレッド外で実行する
             let fallbackImage = await Task.detached(priority: .utility) {
                 Self.loadImageFallback(fileURL: fileURL, size: size, scale: scale)
@@ -74,14 +74,14 @@ final class ThumbnailProvider {
     }
 
     private func cacheKey(
-        for imageFile: ImageFile,
+        for file: FileItem,
         size: CGSize,
         scale: CGFloat
     ) -> NSString {
-        let modifiedAt = imageFile.modifiedAt.map {
+        let modifiedAt = file.modifiedAt.map {
             String($0.timeIntervalSinceReferenceDate.bitPattern)
         } ?? "nil"
-        return "\(imageFile.url.standardizedFileURL.path)|\(modifiedAt)|\(Double(size.width).bitPattern)|\(Double(size.height).bitPattern)|\(Double(scale).bitPattern)" as NSString
+        return "\(file.url.standardizedFileURL.path)|\(modifiedAt)|\(Double(size.width).bitPattern)|\(Double(size.height).bitPattern)|\(Double(scale).bitPattern)" as NSString
     }
 
     private func cache(

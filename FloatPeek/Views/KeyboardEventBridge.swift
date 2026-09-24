@@ -67,7 +67,7 @@ enum HandledKey: Sendable {
     case `return`
     case escape
     case space
-    case arrow(ImageSelection.Direction, extendingSelection: Bool)
+    case arrow(FileSelection.Direction, extendingSelection: Bool)
     case selectAll
     case copy
     case moveToTrash

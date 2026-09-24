@@ -1,6 +1,6 @@
 import Foundation
 
-struct ImageSelection {
+struct FileSelection {
     enum Direction {
         case left
         case right
@@ -14,9 +14,9 @@ struct ImageSelection {
         case range
     }
 
-    private(set) var focusedID: ImageFile.ID?
-    private(set) var selectedIDs: Set<ImageFile.ID> = []
-    private var anchorID: ImageFile.ID?
+    private(set) var focusedID: FileItem.ID?
+    private(set) var selectedIDs: Set<FileItem.ID> = []
+    private var anchorID: FileItem.ID?
 
     mutating func clear() {
         focusedID = nil
@@ -25,9 +25,9 @@ struct ImageSelection {
     }
 
     mutating func select(
-        _ id: ImageFile.ID,
+        _ id: FileItem.ID,
         mode: Mode,
-        orderedIDs: [ImageFile.ID]
+        orderedIDs: [FileItem.ID]
     ) {
         switch mode {
         case .replace:
@@ -43,7 +43,7 @@ struct ImageSelection {
     mutating func move(
         _ direction: Direction,
         columnCount: Int,
-        orderedIDs: [ImageFile.ID],
+        orderedIDs: [FileItem.ID],
         extendingSelection: Bool = false
     ) -> Bool {
         guard !orderedIDs.isEmpty else {
@@ -82,7 +82,7 @@ struct ImageSelection {
         return true
     }
 
-    mutating func reconcile(orderedIDs: [ImageFile.ID]) {
+    mutating func reconcile(orderedIDs: [FileItem.ID]) {
         let validIDs = Set(orderedIDs)
         selectedIDs.formIntersection(validIDs)
 
@@ -101,7 +101,7 @@ struct ImageSelection {
     }
 
     @discardableResult
-    mutating func selectAll(orderedIDs: [ImageFile.ID]) -> Bool {
+    mutating func selectAll(orderedIDs: [FileItem.ID]) -> Bool {
         guard !orderedIDs.isEmpty else {
             return false
         }
@@ -114,15 +114,15 @@ struct ImageSelection {
         return true
     }
 
-    private mutating func replace(with id: ImageFile.ID) {
+    private mutating func replace(with id: FileItem.ID) {
         focusedID = id
         selectedIDs = [id]
         anchorID = id
     }
 
     private mutating func toggle(
-        _ id: ImageFile.ID,
-        orderedIDs: [ImageFile.ID]
+        _ id: FileItem.ID,
+        orderedIDs: [FileItem.ID]
     ) {
         if selectedIDs.remove(id) != nil {
             if focusedID == id {
@@ -137,8 +137,8 @@ struct ImageSelection {
     }
 
     private mutating func selectRange(
-        to id: ImageFile.ID,
-        orderedIDs: [ImageFile.ID]
+        to id: FileItem.ID,
+        orderedIDs: [FileItem.ID]
     ) {
         guard let anchorID,
               let anchorIndex = orderedIDs.firstIndex(of: anchorID),
