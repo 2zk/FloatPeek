@@ -3,8 +3,8 @@ import AppKit
 @MainActor
 final class WindowManager: NSObject, NSWindowDelegate {
     static let shared = WindowManager()
+    static let defaultWindowSize = CGSize(width: 160, height: 600)
 
-    private let windowSize = CGSize(width: 160, height: 600)
     private let userDefaults: PreferencesStoring
     private weak var managedWindow: NSWindow?
 
@@ -166,8 +166,8 @@ final class WindowManager: NSObject, NSWindowDelegate {
 
     private func position(window: NSWindow) {
         let visibleFrame = targetScreen().visibleFrame
-        let width = min(windowSize.width, visibleFrame.width)
-        let height = min(windowSize.height, visibleFrame.height)
+        let width = min(Self.defaultWindowSize.width, visibleFrame.width)
+        let height = min(Self.defaultWindowSize.height, visibleFrame.height)
         let frame = NSRect(
             x: visibleFrame.minX,
             y: visibleFrame.maxY - height,

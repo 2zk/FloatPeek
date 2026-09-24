@@ -6,6 +6,12 @@ enum ImageFileLoaderError: Error, Equatable {
 
 struct ImageFileLoader: @unchecked Sendable {
     static let supportedExtensions = AppSettings.allSupportedFileExtensions
+    private static let resourceKeys: [URLResourceKey] = [
+        .addedToDirectoryDateKey,
+        .creationDateKey,
+        .contentModificationDateKey,
+        .isRegularFileKey
+    ]
 
     private let fileManager: FileManager
     var displayedFileExtensions: Set<String>
@@ -30,12 +36,7 @@ struct ImageFileLoader: @unchecked Sendable {
 
         let fileURLs = try fileManager.contentsOfDirectory(
             at: folderURL,
-            includingPropertiesForKeys: [
-                .addedToDirectoryDateKey,
-                .creationDateKey,
-                .contentModificationDateKey,
-                .isRegularFileKey
-            ],
+            includingPropertiesForKeys: Self.resourceKeys,
             options: [.skipsHiddenFiles]
         )
 
@@ -48,12 +49,9 @@ struct ImageFileLoader: @unchecked Sendable {
                 continue
             }
 
-            guard let resourceValues = try? fileURL.resourceValues(forKeys: [
-                .addedToDirectoryDateKey,
-                .creationDateKey,
-                .contentModificationDateKey,
-                .isRegularFileKey
-            ]) else {
+            guard let resourceValues = try? fileURL.resourceValues(
+                forKeys: Set(Self.resourceKeys)
+            ) else {
                 continue
             }
 

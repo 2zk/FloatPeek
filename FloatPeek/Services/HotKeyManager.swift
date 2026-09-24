@@ -35,26 +35,15 @@ final class HotKeyManager {
         let previousShortcut = registeredShortcut
         unregisterHotKey()
 
-        var hotKeyReference: EventHotKeyRef?
-        let status = RegisterEventHotKey(
-            shortcut.keyCode,
-            shortcut.carbonModifiers,
-            Self.shortcutID,
-            GetApplicationEventTarget(),
-            0,
-            &hotKeyReference
-        )
-
+        let status = registerHotKey(shortcut)
         guard status == noErr else {
             NSLog("FloatPeek: failed to register global shortcut %@. status=%d", shortcut.displayName, status)
             if let previousShortcut {
-                restoreShortcut(previousShortcut)
+                registerHotKey(previousShortcut)
             }
             return false
         }
 
-        hotKey = hotKeyReference
-        registeredShortcut = shortcut
         return true
     }
 
@@ -118,7 +107,9 @@ final class HotKeyManager {
         return true
     }
 
-    private func restoreShortcut(_ shortcut: KeyboardShortcut) {
+    /// 成功した場合だけ登録状態を更新する
+    @discardableResult
+    private func registerHotKey(_ shortcut: KeyboardShortcut) -> OSStatus {
         var hotKeyReference: EventHotKeyRef?
         let status = RegisterEventHotKey(
             shortcut.keyCode,
@@ -130,11 +121,12 @@ final class HotKeyManager {
         )
 
         guard status == noErr else {
-            return
+            return status
         }
 
         hotKey = hotKeyReference
         registeredShortcut = shortcut
+        return status
     }
 
     private func unregisterHotKey() {

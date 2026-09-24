@@ -104,6 +104,18 @@ final class ImageFileLoaderTests: XCTestCase {
         }
     }
 
+    func testImageFileSplitsBaseNameAndKeepsExtensionWhenRenaming() {
+        let image = ImageFile(url: URL(fileURLWithPath: "/tmp/photo.v2.PNG"), addedAt: nil, modifiedAt: nil)
+        XCTAssertEqual(image.baseName, "photo.v2")
+        XCTAssertEqual(image.fileExtension, "PNG")
+        XCTAssertEqual(image.presentationKind, .thumbnail)
+        XCTAssertEqual(image.fileName(withBaseName: "renamed"), "renamed.PNG")
+
+        let noExtension = ImageFile(url: URL(fileURLWithPath: "/tmp/README"), addedAt: nil, modifiedAt: nil)
+        XCTAssertEqual(noExtension.baseName, "README")
+        XCTAssertEqual(noExtension.fileName(withBaseName: "NOTES"), "NOTES")
+    }
+
     private func createFile(named fileName: String, modifiedAt: Date) throws {
         let fileURL = temporaryDirectory.appendingPathComponent(fileName)
         try Data("test".utf8).write(to: fileURL)

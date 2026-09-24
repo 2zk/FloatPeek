@@ -13,9 +13,23 @@ struct ImageFile: Identifiable, Hashable {
     let modifiedAt: Date?
 
     var presentationKind: FilePresentationKind {
-        AppSettings.allThumbnailFileExtensions.contains(url.pathExtension.lowercased())
+        AppSettings.allThumbnailFileExtensions.contains(fileExtension.lowercased())
             ? .thumbnail
             : .fileIcon
+    }
+
+    /// 拡張子を除いたファイル名
+    var baseName: String {
+        url.deletingPathExtension().lastPathComponent
+    }
+
+    var fileExtension: String {
+        url.pathExtension
+    }
+
+    /// 拡張子を維持したまま、拡張子を除いた部分だけを差し替えたファイル名を返す
+    func fileName(withBaseName baseName: String) -> String {
+        fileExtension.isEmpty ? baseName : "\(baseName).\(fileExtension)"
     }
 
     init(url: URL, addedAt: Date?, modifiedAt: Date?) {

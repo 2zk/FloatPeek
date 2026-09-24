@@ -12,14 +12,14 @@ struct FloatPeekApp: App {
     var body: some Scene {
         Window("FloatPeek", id: "main") {
             ContentView()
-                .frame(minWidth: 160, minHeight: 480)
+                .frame(minWidth: WindowManager.defaultWindowSize.width, minHeight: 480)
                 .environmentObject(localization)
                 .environmentObject(tabManager)
                 .environmentObject(appCoordinator)
                 .environmentObject(updateManager)
                 .environment(\.locale, localization.locale)
         }
-        .defaultSize(width: 160, height: 600)
+        .defaultSize(WindowManager.defaultWindowSize)
         .commands {
             CommandGroup(replacing: .newItem) {}
 

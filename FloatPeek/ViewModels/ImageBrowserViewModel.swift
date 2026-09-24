@@ -19,7 +19,6 @@ final class ImageBrowserViewModel: ObservableObject {
     @Published private(set) var sortOption: FileSortOption = .addedAt
     @Published private(set) var isReloading = false
     @Published private(set) var isMovingToTrash = false
-    @Published private(set) var isRenamingFile = false
     @Published private(set) var fileActionErrorTitle: String?
     @Published private(set) var fileActionErrorMessage: String?
     @Published private var selection = ImageSelection()
@@ -29,6 +28,7 @@ final class ImageBrowserViewModel: ObservableObject {
     private let fileActionManager: FileActionHandling
     private let folderMonitor: FolderMonitoring
     private var shouldMonitorFolder = false
+    private var isRenamingFile = false
     private var monitoringTask: Task<Void, Never>?
     private var reloadTask: Task<Void, Never>?
     private var reloadGeneration = 0
@@ -232,15 +232,6 @@ final class ImageBrowserViewModel: ObservableObject {
     }
 
     @discardableResult
-    func openSelectedImage() -> Bool {
-        guard let selectedImage else {
-            return false
-        }
-
-        return fileOpener.open(selectedImage.url)
-    }
-
-    @discardableResult
     func copySelectedImages() -> Bool {
         fileActionManager.copyFiles(selectedImages.map(\.url))
     }
@@ -277,8 +268,7 @@ final class ImageBrowserViewModel: ObservableObject {
             return false
         }
 
-        let fileExtension = image.url.pathExtension
-        let newFileName = fileExtension.isEmpty ? baseName : "\(baseName).\(fileExtension)"
+        let newFileName = image.fileName(withBaseName: baseName)
         let requestedFolderURL = folderURL
         let fileActionManager = fileActionManager
 

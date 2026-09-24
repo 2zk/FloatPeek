@@ -54,7 +54,7 @@ struct ImageFileTile: View {
         self.onMoveToTrash = onMoveToTrash
         self.onRename = onRename
         self.onCancelRename = onCancelRename
-        _renameDraft = State(initialValue: image.url.deletingPathExtension().lastPathComponent)
+        _renameDraft = State(initialValue: image.baseName)
     }
 
     var body: some View {
@@ -66,7 +66,7 @@ struct ImageFileTile: View {
                 if image.presentationKind == .fileIcon {
                     Image(
                         nsImage: ThumbnailProvider.shared.fileIcon(
-                            forFileExtension: image.url.pathExtension
+                            forFileExtension: image.fileExtension
                         )
                     )
                     .resizable()
@@ -133,7 +133,7 @@ struct ImageFileTile: View {
                 return
             }
 
-            renameDraft = image.url.deletingPathExtension().lastPathComponent
+            renameDraft = image.baseName
         }
     }
 
@@ -151,8 +151,8 @@ struct ImageFileTile: View {
                         onCancelRename()
                     }
 
-                if !image.url.pathExtension.isEmpty {
-                    Text(".\(image.url.pathExtension)")
+                if !image.fileExtension.isEmpty {
+                    Text(".\(image.fileExtension)")
                 }
             }
             .font(.caption)
