@@ -52,6 +52,7 @@ final class LocalizationManager: ObservableObject {
     }
 
     private let userDefaults: PreferencesStoring
+    private var bundlesByLanguageCode: [String: Bundle] = [:]
 
     init(userDefaults: PreferencesStoring = AppEnvironment.preferences) {
         self.userDefaults = userDefaults
@@ -60,10 +61,7 @@ final class LocalizationManager: ObservableObject {
     }
 
     func localized(_ key: String) -> String {
-        let languageCode = language.resolvedLanguageCode()
-
-        guard let path = Bundle.main.path(forResource: languageCode, ofType: "lproj"),
-              let bundle = Bundle(path: path) else {
+        guard let bundle = bundle(for: language.resolvedLanguageCode()) else {
             return key
         }
 
@@ -71,11 +69,35 @@ final class LocalizationManager: ObservableObject {
     }
 
     func localizedFormat(_ key: String, _ arguments: CVarArg...) -> String {
+        localizedFormat(key, arguments: arguments)
+    }
+
+    func localizedFormat(_ key: String, arguments: [CVarArg]) -> String {
         String(format: localized(key), locale: locale, arguments: arguments)
+    }
+
+    private func bundle(for languageCode: String) -> Bundle? {
+        if let bundle = bundlesByLanguageCode[languageCode] {
+            return bundle
+        }
+
+        guard let path = Bundle.main.path(forResource: languageCode, ofType: "lproj"),
+              let bundle = Bundle(path: path) else {
+            return nil
+        }
+
+        bundlesByLanguageCode[languageCode] = bundle
+        return bundle
     }
 }
 
+/// View 以外のモデルやサービスから、現在の表示言語で文字列を取得する
 @MainActor
 func localized(_ key: String) -> String {
     LocalizationManager.shared.localized(key)
+}
+
+@MainActor
+func localizedFormat(_ key: String, _ arguments: CVarArg...) -> String {
+    LocalizationManager.shared.localizedFormat(key, arguments: arguments)
 }

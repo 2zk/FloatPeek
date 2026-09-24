@@ -100,6 +100,18 @@ final class AppLifecycleTests: XCTestCase {
         )
     }
 
+    func testLocalizedStringsFollowLanguageChanges() {
+        let localization = LocalizationManager(userDefaults: InMemoryPreferences())
+
+        localization.language = .japanese
+        XCTAssertEqual(localization.localized("Cancel"), "キャンセル")
+        XCTAssertEqual(localization.localizedFormat("Version %@", "1.2.3"), "バージョン 1.2.3")
+
+        localization.language = .english
+        XCTAssertEqual(localization.localized("Cancel"), "Cancel")
+        XCTAssertEqual(localization.localizedFormat("Version %@", "1.2.3"), "Version 1.2.3")
+    }
+
     func testLegacyFolderSettingMigratesToFirstTab() {
         let suiteName = "AppLifecycleTests.tabs.migration.\(UUID().uuidString)"
         let userDefaults = UserDefaults(suiteName: suiteName)!

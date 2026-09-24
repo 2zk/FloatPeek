@@ -93,7 +93,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let alert = NSAlert()
             alert.alertStyle = .warning
             alert.messageText = localized("Global shortcut unavailable")
-            alert.informativeText = LocalizationManager.shared.localizedFormat(
+            alert.informativeText = localizedFormat(
                 "%@ could not be registered. Choose another shortcut in Settings.",
                 shortcut.displayName
             )

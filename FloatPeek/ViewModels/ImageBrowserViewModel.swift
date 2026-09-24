@@ -72,7 +72,7 @@ final class ImageBrowserViewModel: ObservableObject {
         case 1:
             return selectedImage?.fileName ?? selectedImages.first?.fileName ?? localized("None")
         default:
-            return LocalizationManager.shared.localizedFormat("%d files", selectedImageIDs.count)
+            return localizedFormat("%d files", selectedImageIDs.count)
         }
     }
 
@@ -353,7 +353,7 @@ final class ImageBrowserViewModel: ObservableObject {
             isRenamingFile = false
             fileActionError = FileActionError(
                 title: localized("Could not Rename File"),
-                message: LocalizationManager.shared.localizedFormat(
+                message: localizedFormat(
                     "%@ could not be renamed.\n%@",
                     image.fileName,
                     renameErrorDescription(error)
@@ -435,13 +435,13 @@ final class ImageBrowserViewModel: ObservableObject {
     ) -> FileActionError {
         let message: String
         if targetImages.count == 1, let targetImage = targetImages.first {
-            message = LocalizationManager.shared.localizedFormat(
+            message = localizedFormat(
                 "%@ could not be moved to the Trash.\n%@",
                 targetImage.fileName,
                 error.localizedDescription
             )
         } else {
-            message = LocalizationManager.shared.localizedFormat(
+            message = localizedFormat(
                 "%d files could not be moved to the Trash.\n%@",
                 targetImages.count,
                 error.localizedDescription
