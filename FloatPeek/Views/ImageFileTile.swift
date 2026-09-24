@@ -5,16 +5,11 @@ struct ImageFileTile: View {
     let image: ImageFile
     let isSelected: Bool
     let isRenaming: Bool
-    let selectedDragURLs: [URL]
     let thumbnailHeight: CGFloat
     let thumbnailSize: CGSize
+    let dragURLs: () -> [URL]
     let onSelect: (ImageBrowserViewModel.SelectionMode) -> Void
-    let onOpen: () -> Void
-    let onPreview: () -> Void
-    let onCopy: () -> Void
-    let onRevealInFinder: () -> Void
-    let onCopyPath: () -> Void
-    let onMoveToTrash: () -> Void
+    let onAction: (FileAction) -> Void
     let onRename: (String) -> Void
     let onCancelRename: () -> Void
 
@@ -26,32 +21,22 @@ struct ImageFileTile: View {
         image: ImageFile,
         isSelected: Bool,
         isRenaming: Bool,
-        selectedDragURLs: [URL],
         thumbnailHeight: CGFloat,
         thumbnailSize: CGSize,
+        dragURLs: @escaping () -> [URL],
         onSelect: @escaping (ImageBrowserViewModel.SelectionMode) -> Void,
-        onOpen: @escaping () -> Void,
-        onPreview: @escaping () -> Void,
-        onCopy: @escaping () -> Void,
-        onRevealInFinder: @escaping () -> Void,
-        onCopyPath: @escaping () -> Void,
-        onMoveToTrash: @escaping () -> Void,
+        onAction: @escaping (FileAction) -> Void,
         onRename: @escaping (String) -> Void,
         onCancelRename: @escaping () -> Void
     ) {
         self.image = image
         self.isSelected = isSelected
         self.isRenaming = isRenaming
-        self.selectedDragURLs = selectedDragURLs
         self.thumbnailHeight = thumbnailHeight
         self.thumbnailSize = thumbnailSize
+        self.dragURLs = dragURLs
         self.onSelect = onSelect
-        self.onOpen = onOpen
-        self.onPreview = onPreview
-        self.onCopy = onCopy
-        self.onRevealInFinder = onRevealInFinder
-        self.onCopyPath = onCopyPath
-        self.onMoveToTrash = onMoveToTrash
+        self.onAction = onAction
         self.onRename = onRename
         self.onCancelRename = onCancelRename
         _renameDraft = State(initialValue: image.baseName)
@@ -93,16 +78,10 @@ struct ImageFileTile: View {
         .contentShape(Rectangle())
         .overlay(
             FileDragInteractionView(
-                imageURL: image.url,
                 isSelected: isSelected,
-                selectedDragURLs: selectedDragURLs,
+                dragURLs: dragURLs,
                 onSelect: onSelect,
-                onOpen: onOpen,
-                onPreview: onPreview,
-                onCopy: onCopy,
-                onRevealInFinder: onRevealInFinder,
-                onCopyPath: onCopyPath,
-                onMoveToTrash: onMoveToTrash
+                onAction: onAction
             )
             .allowsHitTesting(!isRenaming)
         )

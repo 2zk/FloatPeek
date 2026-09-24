@@ -2,7 +2,14 @@ import Foundation
 @preconcurrency import Quartz
 
 @MainActor
+protocol FilePreviewing {
+    @discardableResult
+    func preview(fileURL: URL) -> Bool
+}
+
+@MainActor
 final class QuickLookManager: NSObject,
+    FilePreviewing,
     @preconcurrency QLPreviewPanelDataSource,
     QLPreviewPanelDelegate {
     static let shared = QuickLookManager()

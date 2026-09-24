@@ -62,3 +62,44 @@ enum FileSortOption: String, CaseIterable, Identifiable {
         }
     }
 }
+
+extension FileSortOption {
+    func areInIncreasingOrder(_ lhs: ImageFile, _ rhs: ImageFile) -> Bool {
+        switch self {
+        case .addedAt:
+            return Self.dateDescendingThenName(lhs.addedAt, rhs.addedAt, lhs: lhs, rhs: rhs)
+        case .modifiedAt:
+            return Self.dateDescendingThenName(lhs.modifiedAt, rhs.modifiedAt, lhs: lhs, rhs: rhs)
+        case .fileName:
+            return Self.nameAscending(lhs, rhs)
+        }
+    }
+
+    private static func dateDescendingThenName(
+        _ lhsDate: Date?,
+        _ rhsDate: Date?,
+        lhs: ImageFile,
+        rhs: ImageFile
+    ) -> Bool {
+        switch (lhsDate, rhsDate) {
+        case let (leftDate?, rightDate?) where leftDate != rightDate:
+            return leftDate > rightDate
+        case (_?, nil):
+            return true
+        case (nil, _?):
+            return false
+        default:
+            return nameAscending(lhs, rhs)
+        }
+    }
+
+    private static func nameAscending(_ lhs: ImageFile, _ rhs: ImageFile) -> Bool {
+        lhs.fileName.localizedStandardCompare(rhs.fileName) == .orderedAscending
+    }
+}
+
+extension Array where Element == ImageFile {
+    mutating func sort(by sortOption: FileSortOption) {
+        sort(by: sortOption.areInIncreasingOrder)
+    }
+}

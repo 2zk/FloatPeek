@@ -6,6 +6,7 @@ import XCTest
 final class ImageBrowserFileActionTests: XCTestCase {
     private var temporaryDirectory: URL!
     private var fileActionManager: TestFileActionManager!
+    private var filePreviewer: TestFilePreviewer!
     private var viewModel: ImageBrowserViewModel!
 
     override func setUp() async throws {
@@ -20,9 +21,11 @@ final class ImageBrowserFileActionTests: XCTestCase {
         try createFile(named: "third.png")
 
         fileActionManager = TestFileActionManager()
+        filePreviewer = TestFilePreviewer()
         viewModel = ImageBrowserViewModel(
             initialFolderURL: temporaryDirectory,
-            fileActionManager: fileActionManager
+            fileActionManager: fileActionManager,
+            filePreviewer: filePreviewer
         )
         try await waitForReload()
     }
@@ -30,6 +33,7 @@ final class ImageBrowserFileActionTests: XCTestCase {
     override func tearDownWithError() throws {
         try? FileManager.default.removeItem(at: temporaryDirectory)
         viewModel = nil
+        filePreviewer = nil
         fileActionManager = nil
         temporaryDirectory = nil
     }
@@ -67,6 +71,44 @@ final class ImageBrowserFileActionTests: XCTestCase {
         XCTAssertTrue(viewModel.copyImages(for: third))
 
         XCTAssertEqual(fileActionManager.copiedFileURLs, [third.url])
+    }
+
+    func testActionURLsUseSelectionOnlyWhenTargetIsSelected() throws {
+        let first = try image(named: "first.png")
+        let second = try image(named: "second.png")
+        let third = try image(named: "third.png")
+        viewModel.selectImage(first)
+        viewModel.selectImage(second, mode: .toggle)
+
+        XCTAssertEqual(Set(viewModel.actionURLs(for: first)), [first.url, second.url])
+        XCTAssertEqual(viewModel.actionURLs(for: third), [third.url])
+    }
+
+    func testPerformFileActionDispatchesToFileActionManager() throws {
+        let first = try image(named: "first.png")
+        let second = try image(named: "second.png")
+        viewModel.selectImage(first)
+        viewModel.selectImage(second, mode: .toggle)
+
+        viewModel.performFileAction(.copy, for: first)
+        viewModel.performFileAction(.copyPath, for: first)
+        viewModel.performFileAction(.revealInFinder, for: first)
+
+        let expectedURLs: Set<URL> = [first.url, second.url]
+        XCTAssertEqual(Set(fileActionManager.copiedFileURLs), expectedURLs)
+        XCTAssertEqual(Set(fileActionManager.copiedPathURLs), expectedURLs)
+        XCTAssertEqual(Set(fileActionManager.revealedURLs), expectedURLs)
+    }
+
+    func testPreviewActionSelectsUnselectedImageAndShowsPreview() throws {
+        let first = try image(named: "first.png")
+        let third = try image(named: "third.png")
+        viewModel.selectImage(first)
+
+        viewModel.performFileAction(.preview, for: third)
+
+        XCTAssertEqual(viewModel.selectedImageIDs, [third.id])
+        XCTAssertEqual(filePreviewer.previewedURLs, [third.url])
     }
 
     func testCommandCIsHandledAsCopyShortcut() throws {
@@ -209,6 +251,25 @@ final class ImageBrowserFileActionTests: XCTestCase {
         )
     }
 
+    func testContextMenuItemsPerformCorrespondingFileActions() throws {
+        let interactionView = FileDragInteractionNSView()
+        interactionView.isSelected = true
+        var performedActions: [FileAction] = []
+        interactionView.onAction = { performedActions.append($0) }
+
+        let event = try XCTUnwrap(makeKeyEvent(modifierFlags: []))
+        let menu = try XCTUnwrap(interactionView.menu(for: event))
+        for item in menu.items where !item.isSeparatorItem {
+            let action = try XCTUnwrap(item.action)
+            XCTAssertTrue(NSApp.sendAction(action, to: item.target, from: item))
+        }
+
+        XCTAssertEqual(
+            performedActions,
+            [.open, .preview, .copy, .copyPath, .revealInFinder, .moveToTrash]
+        )
+    }
+
     func testMoveSelectedImagesToTrashMovesAllSelectedImagesAndSelectsNext() async throws {
         viewModel.setSortOption(.fileName)
         let first = try image(named: "first.png")
@@ -291,7 +352,7 @@ final class ImageBrowserFileActionTests: XCTestCase {
 
         XCTAssertEqual(viewModel.images.count, 3)
         XCTAssertEqual(viewModel.selectedImageIDs, [first.id, second.id])
-        XCTAssertTrue(viewModel.fileActionErrorMessage?.contains("2") == true)
+        XCTAssertTrue(viewModel.fileActionError?.message.contains("2") == true)
     }
 
     func testSingleSelectedImageCanBeRenamed() async throws {
@@ -358,8 +419,8 @@ final class ImageBrowserFileActionTests: XCTestCase {
 
         XCTAssertTrue(FileManager.default.fileExists(atPath: first.url.path))
         XCTAssertEqual(viewModel.selectedImage?.id, first.id)
-        XCTAssertEqual(viewModel.fileActionErrorTitle, localized("Could not Rename File"))
-        XCTAssertTrue(viewModel.fileActionErrorMessage?.contains("Rename failure") == true)
+        XCTAssertEqual(viewModel.fileActionError?.title, localized("Could not Rename File"))
+        XCTAssertTrue(viewModel.fileActionError?.message.contains("Rename failure") == true)
     }
 
     func testFileActionManagerRejectsInvalidRenameNamesAndCollisions() async throws {
@@ -507,5 +568,15 @@ private final class TestFileActionManager: FileActionHandling {
             .appendingPathComponent(fileName)
         try FileManager.default.moveItem(at: fileURL, to: destinationURL)
         return destinationURL
+    }
+}
+
+@MainActor
+private final class TestFilePreviewer: FilePreviewing {
+    private(set) var previewedURLs: [URL] = []
+
+    func preview(fileURL: URL) -> Bool {
+        previewedURLs.append(fileURL)
+        return true
     }
 }

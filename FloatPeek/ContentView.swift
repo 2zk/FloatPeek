@@ -32,7 +32,6 @@ struct ContentView: View {
                         ImageGridView(
                             images: viewModel.images,
                             selectedImageIDs: viewModel.selectedImageIDs,
-                            selectedImages: viewModel.selectedImages,
                             scrollTargetImageID: scrollTargetImageID,
                             renamingImageID: renamingImageID,
                             columnCount: displayedGridColumnCount,
@@ -42,21 +41,9 @@ struct ContentView: View {
                                 scrollTargetImageID = nil
                                 viewModel.selectImage(image, mode: mode)
                             },
-                            onOpen: viewModel.openImage,
-                            onPreview: { image in
-                                previewImage(image)
-                            },
-                            onCopy: { image in
-                                viewModel.copyImages(for: image)
-                            },
-                            onRevealInFinder: { image in
-                                viewModel.revealInFinder(image)
-                            },
-                            onCopyPath: { image in
-                                viewModel.copyPaths(for: image)
-                            },
-                            onMoveToTrash: { image in
-                                viewModel.moveImagesToTrash(for: image)
+                            dragURLs: viewModel.actionURLs(for:),
+                            onAction: { image, action in
+                                viewModel.performFileAction(action, for: image)
                             },
                             onRename: { image, baseName in
                                 renamingImageID = nil
@@ -172,21 +159,15 @@ struct ContentView: View {
             )
         }
         .alert(
-            viewModel.fileActionErrorTitle ?? "",
-            isPresented: Binding(
-                get: { viewModel.fileActionErrorMessage != nil },
-                set: { isPresented in
-                    if !isPresented {
-                        viewModel.dismissFileActionError()
-                    }
-                }
-            )
-        ) {
+            viewModel.fileActionError?.title ?? "",
+            isPresented: $viewModel.isShowingFileActionError,
+            presenting: viewModel.fileActionError
+        ) { _ in
             Button(localization.localized("OK")) {
                 viewModel.dismissFileActionError()
             }
-        } message: {
-            Text(viewModel.fileActionErrorMessage ?? "")
+        } message: { error in
+            Text(error.message)
         }
     }
 
@@ -249,14 +230,6 @@ struct ContentView: View {
         }
 
         scrollTargetImageID = viewModel.selectedImage?.id
-    }
-
-    @discardableResult
-    private func previewImage(_ image: ImageFile) -> Bool {
-        if !viewModel.selectedImageIDs.contains(image.id) {
-            viewModel.selectImage(image)
-        }
-        return QuickLookManager.shared.preview(fileURL: image.url)
     }
 
     private func updateGridColumnCount(for width: CGFloat) {

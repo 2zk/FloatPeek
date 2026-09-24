@@ -1,5 +1,19 @@
 import Foundation
 
+enum FileAction: CaseIterable {
+    case open
+    case preview
+    case copy
+    case copyPath
+    case revealInFinder
+    case moveToTrash
+}
+
+struct FileActionError: Equatable {
+    let title: String
+    let message: String
+}
+
 @MainActor
 final class ImageBrowserViewModel: ObservableObject {
     typealias SelectionDirection = ImageSelection.Direction
@@ -19,13 +33,13 @@ final class ImageBrowserViewModel: ObservableObject {
     @Published private(set) var sortOption: FileSortOption = .addedAt
     @Published private(set) var isReloading = false
     @Published private(set) var isMovingToTrash = false
-    @Published private(set) var fileActionErrorTitle: String?
-    @Published private(set) var fileActionErrorMessage: String?
+    @Published private(set) var fileActionError: FileActionError?
     @Published private var selection = ImageSelection()
 
     private var imageFileLoader: ImageFileLoader
     private let fileOpener: FileOpening
     private let fileActionManager: FileActionHandling
+    private let filePreviewer: FilePreviewing
     private let folderMonitor: FolderMonitoring
     private var shouldMonitorFolder = false
     private var isRenamingFile = false
@@ -39,11 +53,13 @@ final class ImageBrowserViewModel: ObservableObject {
         imageFileLoader: ImageFileLoader = ImageFileLoader(),
         fileOpener: FileOpening = FileOpener(),
         fileActionManager: FileActionHandling = FileActionManager(),
+        filePreviewer: FilePreviewing = QuickLookManager.shared,
         folderMonitor: FolderMonitoring = FolderMonitor()
     ) {
         self.imageFileLoader = imageFileLoader
         self.fileOpener = fileOpener
         self.fileActionManager = fileActionManager
+        self.filePreviewer = filePreviewer
         self.folderMonitor = folderMonitor
         self.folderURL = initialFolderURL
         reload()
@@ -80,6 +96,15 @@ final class ImageBrowserViewModel: ObservableObject {
             return nil
         }
         return selectedImage
+    }
+
+    var isShowingFileActionError: Bool {
+        get { fileActionError != nil }
+        set {
+            if !newValue {
+                fileActionError = nil
+            }
+        }
     }
 
     func setFolderURL(_ folderURL: URL?) {
@@ -157,9 +182,7 @@ final class ImageBrowserViewModel: ObservableObject {
                 }
 
                 if self.sortOption != requestedSortOption {
-                    loadedImages.sort { lhs, rhs in
-                        ImageFileLoader.sort(lhs, rhs, by: self.sortOption)
-                    }
+                    loadedImages.sort(by: self.sortOption)
                 }
                 self.images = loadedImages
                 self.reconcileSelection()
@@ -182,17 +205,17 @@ final class ImageBrowserViewModel: ObservableObject {
     }
 
     func selectImage(_ image: ImageFile, mode: SelectionMode = .replace) {
-        selection.select(image.id, mode: mode, orderedIDs: images.map(\.id))
-        selectionRevision += 1
+        changeSelection { selection, orderedIDs in
+            selection.select(image.id, mode: mode, orderedIDs: orderedIDs)
+            return true
+        }
     }
 
     @discardableResult
     func selectAllImages() -> Bool {
-        let didSelect = selection.selectAll(orderedIDs: images.map(\.id))
-        if didSelect {
-            selectionRevision += 1
+        changeSelection { selection, orderedIDs in
+            selection.selectAll(orderedIDs: orderedIDs)
         }
-        return didSelect
     }
 
     func setSortOption(_ sortOption: FileSortOption) {
@@ -201,9 +224,7 @@ final class ImageBrowserViewModel: ObservableObject {
         }
 
         self.sortOption = sortOption
-        images.sort { lhs, rhs in
-            ImageFileLoader.sort(lhs, rhs, by: sortOption)
-        }
+        images.sort(by: sortOption)
         reconcileSelection()
     }
 
@@ -213,22 +234,50 @@ final class ImageBrowserViewModel: ObservableObject {
         columnCount: Int,
         extendingSelection: Bool = false
     ) -> Bool {
-        let didMove = selection.move(
-            direction,
-            columnCount: columnCount,
-            orderedIDs: images.map(\.id),
-            extendingSelection: extendingSelection
-        )
-        if didMove {
-            selectionRevision += 1
+        changeSelection { selection, orderedIDs in
+            selection.move(
+                direction,
+                columnCount: columnCount,
+                orderedIDs: orderedIDs,
+                extendingSelection: extendingSelection
+            )
         }
-        return didMove
+    }
+
+    /// 右クリックメニューなどから、指定したファイルを起点に操作を実行する
+    func performFileAction(_ action: FileAction, for image: ImageFile) {
+        switch action {
+        case .open:
+            openImage(image)
+        case .preview:
+            previewImage(image)
+        case .copy:
+            copyImages(for: image)
+        case .copyPath:
+            copyPaths(for: image)
+        case .revealInFinder:
+            revealInFinder(image)
+        case .moveToTrash:
+            moveImagesToTrash(for: image)
+        }
     }
 
     func openImage(_ image: ImageFile) {
-        selection.select(image.id, mode: .replace, orderedIDs: images.map(\.id))
-        selectionRevision += 1
+        selectImage(image)
         fileOpener.open(image.url)
+    }
+
+    @discardableResult
+    func previewImage(_ image: ImageFile) -> Bool {
+        if !selectedImageIDs.contains(image.id) {
+            selectImage(image)
+        }
+        return filePreviewer.preview(fileURL: image.url)
+    }
+
+    /// 選択中のファイルなら選択中の全ファイル、そうでなければ指定したファイルだけを対象にする
+    func actionURLs(for image: ImageFile) -> [URL] {
+        actionImages(for: image).map(\.url)
     }
 
     @discardableResult
@@ -238,17 +287,17 @@ final class ImageBrowserViewModel: ObservableObject {
 
     @discardableResult
     func copyImages(for image: ImageFile) -> Bool {
-        fileActionManager.copyFiles(actionImages(for: image).map(\.url))
+        fileActionManager.copyFiles(actionURLs(for: image))
     }
 
     @discardableResult
     func copyPaths(for image: ImageFile) -> Bool {
-        fileActionManager.copyPaths(actionImages(for: image).map(\.url))
+        fileActionManager.copyPaths(actionURLs(for: image))
     }
 
     @discardableResult
     func revealInFinder(_ image: ImageFile) -> Bool {
-        fileActionManager.revealInFinder(actionImages(for: image).map(\.url))
+        fileActionManager.revealInFinder(actionURLs(for: image))
     }
 
     @discardableResult
@@ -273,8 +322,7 @@ final class ImageBrowserViewModel: ObservableObject {
         let fileActionManager = fileActionManager
 
         isRenamingFile = true
-        fileActionErrorTitle = nil
-        fileActionErrorMessage = nil
+        fileActionError = nil
 
         do {
             let renamedURL = try await fileActionManager.renameFile(
@@ -293,21 +341,23 @@ final class ImageBrowserViewModel: ObservableObject {
                 addedAt: image.addedAt,
                 modifiedAt: image.modifiedAt
             )
-            images.sort { lhs, rhs in
-                ImageFileLoader.sort(lhs, rhs, by: sortOption)
+            images.sort(by: sortOption)
+            changeSelection { selection, orderedIDs in
+                selection.select(renamedURL, mode: .replace, orderedIDs: orderedIDs)
+                return true
             }
-            selection.select(renamedURL, mode: .replace, orderedIDs: images.map(\.id))
-            selectionRevision += 1
             displayState = .loaded
             reload()
             return true
         } catch {
             isRenamingFile = false
-            fileActionErrorTitle = localized("Could not Rename File")
-            fileActionErrorMessage = LocalizationManager.shared.localizedFormat(
-                "%@ could not be renamed.\n%@",
-                image.fileName,
-                renameErrorDescription(error)
+            fileActionError = FileActionError(
+                title: localized("Could not Rename File"),
+                message: LocalizationManager.shared.localizedFormat(
+                    "%@ could not be renamed.\n%@",
+                    image.fileName,
+                    renameErrorDescription(error)
+                )
             )
             return false
         }
@@ -333,8 +383,7 @@ final class ImageBrowserViewModel: ObservableObject {
         let fileActionManager = fileActionManager
 
         isMovingToTrash = true
-        fileActionErrorTitle = nil
-        fileActionErrorMessage = nil
+        fileActionError = nil
 
         Task { [weak self] in
             do {
@@ -362,20 +411,10 @@ final class ImageBrowserViewModel: ObservableObject {
                 }
 
                 self.isMovingToTrash = false
-                self.fileActionErrorTitle = localized("Could not Move to Trash")
-                if targetImages.count == 1, let targetImage = targetImages.first {
-                    self.fileActionErrorMessage = LocalizationManager.shared.localizedFormat(
-                        "%@ could not be moved to the Trash.\n%@",
-                        targetImage.fileName,
-                        error.localizedDescription
-                    )
-                } else {
-                    self.fileActionErrorMessage = LocalizationManager.shared.localizedFormat(
-                        "%d files could not be moved to the Trash.\n%@",
-                        targetImages.count,
-                        error.localizedDescription
-                    )
-                }
+                self.fileActionError = Self.moveToTrashError(
+                    for: targetImages,
+                    error: error
+                )
 
                 if self.folderURL == requestedFolderURL {
                     self.reload()
@@ -387,8 +426,28 @@ final class ImageBrowserViewModel: ObservableObject {
     }
 
     func dismissFileActionError() {
-        fileActionErrorTitle = nil
-        fileActionErrorMessage = nil
+        fileActionError = nil
+    }
+
+    private static func moveToTrashError(
+        for targetImages: [ImageFile],
+        error: Error
+    ) -> FileActionError {
+        let message: String
+        if targetImages.count == 1, let targetImage = targetImages.first {
+            message = LocalizationManager.shared.localizedFormat(
+                "%@ could not be moved to the Trash.\n%@",
+                targetImage.fileName,
+                error.localizedDescription
+            )
+        } else {
+            message = LocalizationManager.shared.localizedFormat(
+                "%d files could not be moved to the Trash.\n%@",
+                targetImages.count,
+                error.localizedDescription
+            )
+        }
+        return FileActionError(title: localized("Could not Move to Trash"), message: message)
     }
 
     private func renameErrorDescription(_ error: Error) -> String {
@@ -406,6 +465,19 @@ final class ImageBrowserViewModel: ObservableObject {
 
     private func reconcileSelection() {
         selection.reconcile(orderedIDs: images.map(\.id))
+    }
+
+    /// 利用者の操作による選択変更を反映し、変更があれば選択の世代を進める。
+    /// ゴミ箱移動後に選択を自動で進めてよいかの判定に世代を使う。
+    @discardableResult
+    private func changeSelection(
+        _ change: (inout ImageSelection, _ orderedIDs: [ImageFile.ID]) -> Bool
+    ) -> Bool {
+        let didChange = change(&selection, images.map(\.id))
+        if didChange {
+            selectionRevision += 1
+        }
+        return didChange
     }
 
     private func clearImagesForLoadFailure() {
@@ -457,22 +529,17 @@ final class ImageBrowserViewModel: ObservableObject {
     ) {
         images.removeAll { recycledIDs.contains($0.id) }
 
-        if shouldAdvanceSelection {
-            if images.isEmpty {
+        changeSelection { selection, orderedIDs in
+            if !shouldAdvanceSelection {
+                selection.reconcile(orderedIDs: orderedIDs)
+            } else if orderedIDs.isEmpty {
                 selection.clear()
             } else {
-                let nextIndex = min(originalFocusedIndex, images.count - 1)
-                selection.select(
-                    images[nextIndex].id,
-                    mode: .replace,
-                    orderedIDs: images.map(\.id)
-                )
+                let nextIndex = min(originalFocusedIndex, orderedIDs.count - 1)
+                selection.select(orderedIDs[nextIndex], mode: .replace, orderedIDs: orderedIDs)
             }
-        } else {
-            reconcileSelection()
+            return true
         }
-
-        selectionRevision += 1
         displayState = images.isEmpty ? .noImages : .loaded
     }
 

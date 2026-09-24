@@ -79,9 +79,7 @@ final class ImageFileLoaderTests: XCTestCase {
             makeImageFile(named: "b.png", addedAt: newerDate),
             makeImageFile(named: "a.png", addedAt: newerDate)
         ]
-        .sorted { lhs, rhs in
-            ImageFileLoader.sort(lhs, rhs, by: .addedAt)
-        }
+        .sorted(by: FileSortOption.addedAt.areInIncreasingOrder)
 
         XCTAssertEqual(images.map(\.fileName), ["a.png", "b.png", "z.png"])
     }

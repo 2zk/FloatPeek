@@ -2,16 +2,10 @@ import AppKit
 import SwiftUI
 
 struct FileDragInteractionView: NSViewRepresentable {
-    let imageURL: URL
     let isSelected: Bool
-    let selectedDragURLs: [URL]
+    let dragURLs: () -> [URL]
     let onSelect: (ImageBrowserViewModel.SelectionMode) -> Void
-    let onOpen: () -> Void
-    let onPreview: () -> Void
-    let onCopy: () -> Void
-    let onRevealInFinder: () -> Void
-    let onCopyPath: () -> Void
-    let onMoveToTrash: () -> Void
+    let onAction: (FileAction) -> Void
 
     func makeNSView(context: Context) -> FileDragInteractionNSView {
         let view = FileDragInteractionNSView()
@@ -24,30 +18,18 @@ struct FileDragInteractionView: NSViewRepresentable {
     }
 
     private func update(_ view: FileDragInteractionNSView) {
-        view.imageURL = imageURL
         view.isSelected = isSelected
-        view.selectedDragURLs = selectedDragURLs
+        view.dragURLs = dragURLs
         view.onSelect = onSelect
-        view.onOpen = onOpen
-        view.onPreview = onPreview
-        view.onCopy = onCopy
-        view.onRevealInFinder = onRevealInFinder
-        view.onCopyPath = onCopyPath
-        view.onMoveToTrash = onMoveToTrash
+        view.onAction = onAction
     }
 }
 
 final class FileDragInteractionNSView: NSView, NSDraggingSource {
-    var imageURL: URL?
     var isSelected = false
-    var selectedDragURLs: [URL] = []
+    var dragURLs: (() -> [URL])?
     var onSelect: ((ImageBrowserViewModel.SelectionMode) -> Void)?
-    var onOpen: (() -> Void)?
-    var onPreview: (() -> Void)?
-    var onCopy: (() -> Void)?
-    var onRevealInFinder: (() -> Void)?
-    var onCopyPath: (() -> Void)?
-    var onMoveToTrash: (() -> Void)?
+    var onAction: ((FileAction) -> Void)?
 
     private var didStartDrag = false
 
@@ -66,13 +48,14 @@ final class FileDragInteractionNSView: NSView, NSDraggingSource {
 
         didStartDrag = true
 
-        let dragURLs = isSelected ? selectedDragURLs : imageURL.map { [$0] } ?? []
-        guard !dragURLs.isEmpty else {
-            return
-        }
-
+        // 未選択の項目は先に単独選択し、選択状態に応じた対象を取得する
         if !isSelected {
             onSelect?(.replace)
+        }
+
+        let dragURLs = dragURLs?() ?? []
+        guard !dragURLs.isEmpty else {
+            return
         }
 
         beginDraggingSession(
@@ -88,7 +71,7 @@ final class FileDragInteractionNSView: NSView, NSDraggingSource {
         }
 
         if event.clickCount >= 2 {
-            onOpen?()
+            onAction?(.open)
         } else {
             onSelect?(selectionMode(for: event))
         }
@@ -100,24 +83,15 @@ final class FileDragInteractionNSView: NSView, NSDraggingSource {
         }
 
         let menu = NSMenu()
-        menu.addItem(makeMenuItem(title: localized("Open"), action: #selector(openFromMenu)))
-        menu.addItem(makeMenuItem(title: localized("Quick Look"), action: #selector(previewFromMenu)))
+        menu.addItem(makeMenuItem(for: .open))
+        menu.addItem(makeMenuItem(for: .preview))
         menu.addItem(.separator())
-
-        let copyItem = makeMenuItem(title: localized("Copy"), action: #selector(copyFromMenu))
-        copyItem.keyEquivalent = "c"
-        copyItem.keyEquivalentModifierMask = .command
-        menu.addItem(copyItem)
-
-        menu.addItem(makeMenuItem(title: localized("Copy File Path"), action: #selector(copyPathFromMenu)))
+        menu.addItem(makeMenuItem(for: .copy))
+        menu.addItem(makeMenuItem(for: .copyPath))
         menu.addItem(.separator())
-        menu.addItem(
-            makeMenuItem(title: localized("Reveal in Finder"), action: #selector(revealInFinderFromMenu))
-        )
+        menu.addItem(makeMenuItem(for: .revealInFinder))
         menu.addItem(.separator())
-        menu.addItem(
-            makeMenuItem(title: localized("Move to Trash"), action: #selector(moveToTrashFromMenu))
-        )
+        menu.addItem(makeMenuItem(for: .moveToTrash))
         return menu
     }
 
@@ -146,34 +120,42 @@ final class FileDragInteractionNSView: NSView, NSDraggingSource {
         return item
     }
 
-    private func makeMenuItem(title: String, action: Selector) -> NSMenuItem {
-        let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
+    private func makeMenuItem(for action: FileAction) -> NSMenuItem {
+        let item = NSMenuItem(
+            title: Self.menuTitle(for: action),
+            action: #selector(performMenuAction(_:)),
+            keyEquivalent: action == .copy ? "c" : ""
+        )
+        if action == .copy {
+            item.keyEquivalentModifierMask = .command
+        }
         item.target = self
+        item.representedObject = action
         return item
     }
 
-    @objc private func openFromMenu() {
-        onOpen?()
+    @objc private func performMenuAction(_ sender: NSMenuItem) {
+        guard let action = sender.representedObject as? FileAction else {
+            return
+        }
+        onAction?(action)
     }
 
-    @objc private func previewFromMenu() {
-        onPreview?()
-    }
-
-    @objc private func copyFromMenu() {
-        onCopy?()
-    }
-
-    @objc private func copyPathFromMenu() {
-        onCopyPath?()
-    }
-
-    @objc private func revealInFinderFromMenu() {
-        onRevealInFinder?()
-    }
-
-    @objc private func moveToTrashFromMenu() {
-        onMoveToTrash?()
+    private static func menuTitle(for action: FileAction) -> String {
+        switch action {
+        case .open:
+            localized("Open")
+        case .preview:
+            localized("Quick Look")
+        case .copy:
+            localized("Copy")
+        case .copyPath:
+            localized("Copy File Path")
+        case .revealInFinder:
+            localized("Reveal in Finder")
+        case .moveToTrash:
+            localized("Move to Trash")
+        }
     }
 
     private func selectionMode(for event: NSEvent) -> ImageBrowserViewModel.SelectionMode {

@@ -20,19 +20,14 @@ struct ImageGridView: View {
 
     let images: [ImageFile]
     let selectedImageIDs: Set<ImageFile.ID>
-    let selectedImages: [ImageFile]
     let scrollTargetImageID: ImageFile.ID?
     let renamingImageID: ImageFile.ID?
     let columnCount: Int
     let scaleImagesWithWindow: Bool
     let availableWidth: CGFloat
     let onSelect: (ImageFile, ImageBrowserViewModel.SelectionMode) -> Void
-    let onOpen: (ImageFile) -> Void
-    let onPreview: (ImageFile) -> Void
-    let onCopy: (ImageFile) -> Void
-    let onRevealInFinder: (ImageFile) -> Void
-    let onCopyPath: (ImageFile) -> Void
-    let onMoveToTrash: (ImageFile) -> Void
+    let dragURLs: (ImageFile) -> [URL]
+    let onAction: (ImageFile, FileAction) -> Void
     let onRename: (ImageFile, String) -> Void
     let onCancelRename: () -> Void
 
@@ -45,29 +40,16 @@ struct ImageGridView: View {
                             image: image,
                             isSelected: selectedImageIDs.contains(image.id),
                             isRenaming: renamingImageID == image.id,
-                            selectedDragURLs: selectedDragURLs(for: image),
                             thumbnailHeight: thumbnailHeight(for: image),
                             thumbnailSize: thumbnailSize(for: image),
+                            dragURLs: {
+                                dragURLs(image)
+                            },
                             onSelect: { mode in
                                 onSelect(image, mode)
                             },
-                            onOpen: {
-                                onOpen(image)
-                            },
-                            onPreview: {
-                                onPreview(image)
-                            },
-                            onCopy: {
-                                onCopy(image)
-                            },
-                            onRevealInFinder: {
-                                onRevealInFinder(image)
-                            },
-                            onCopyPath: {
-                                onCopyPath(image)
-                            },
-                            onMoveToTrash: {
-                                onMoveToTrash(image)
+                            onAction: { action in
+                                onAction(image, action)
                             },
                             onRename: { baseName in
                                 onRename(image, baseName)
@@ -141,13 +123,5 @@ struct ImageGridView: View {
 
     private func roundedThumbnailDimension(_ value: CGFloat) -> CGFloat {
         ceil(value / Self.thumbnailSizeStep) * Self.thumbnailSizeStep
-    }
-
-    private func selectedDragURLs(for image: ImageFile) -> [URL] {
-        guard selectedImageIDs.contains(image.id) else {
-            return [image.url]
-        }
-
-        return selectedImages.map(\.url)
     }
 }
