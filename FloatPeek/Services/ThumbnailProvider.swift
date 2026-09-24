@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import ImageIO
 import UniformTypeIdentifiers
 @preconcurrency import QuickLookThumbnailing
 
@@ -39,7 +40,12 @@ final class ThumbnailProvider {
                 return nil
             }
 
-            guard let fallbackImage = loadImageFallback(fileURL: imageFile.url, size: size) else {
+            let fileURL = imageFile.url
+            // フォールバックは画像全体の読み込みを伴うため、メインスレッド外で実行する
+            let fallbackImage = await Task.detached(priority: .utility) {
+                Self.loadImageFallback(fileURL: fileURL, size: size, scale: scale)
+            }.value
+            guard let fallbackImage, !Task.isCancelled else {
                 return nil
             }
 
@@ -117,25 +123,83 @@ final class ThumbnailProvider {
         }
     }
 
-    private nonisolated func loadImageFallback(fileURL: URL, size: CGSize) -> NSImage? {
-        guard let sourceImage = NSImage(contentsOf: fileURL) else {
+    nonisolated static func loadImageFallback(
+        fileURL: URL,
+        size: CGSize,
+        scale: CGFloat
+    ) -> NSImage? {
+        downsampledImage(fileURL: fileURL, size: size, scale: scale)
+            ?? renderedImage(fileURL: fileURL, size: size, scale: scale)
+    }
+
+    /// ImageIO で扱える形式は、元画像全体をデコードせずに縮小画像を生成する
+    private nonisolated static func downsampledImage(
+        fileURL: URL,
+        size: CGSize,
+        scale: CGFloat
+    ) -> NSImage? {
+        guard let source = CGImageSourceCreateWithURL(fileURL as CFURL, nil) else {
             return nil
         }
 
-        let sourceSize = sourceImage.size
-        guard let fittedSize = Self.aspectFitSize(
-            sourceSize: sourceSize,
+        let maxPixelSize = max(size.width, size.height) * scale
+        let options: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceShouldCacheImmediately: true,
+            kCGImageSourceThumbnailMaxPixelSize: max(Int(ceil(maxPixelSize)), 1)
+        ]
+        guard let cgImage = CGImageSourceCreateThumbnailAtIndex(
+            source,
+            0,
+            options as CFDictionary
+        ), let fittedSize = aspectFitSize(
+            sourceSize: CGSize(width: cgImage.width, height: cgImage.height),
             boundingSize: size
         ) else {
             return nil
         }
 
-        let targetImage = NSImage(size: fittedSize)
-        targetImage.lockFocus()
-        NSGraphicsContext.current?.imageInterpolation = .high
+        return NSImage(cgImage: cgImage, size: fittedSize)
+    }
+
+    /// SVG や PDF など ImageIO で扱えない形式は NSImage で読み込み、ビットマップへ描画する
+    private nonisolated static func renderedImage(
+        fileURL: URL,
+        size: CGSize,
+        scale: CGFloat
+    ) -> NSImage? {
+        guard let sourceImage = NSImage(contentsOf: fileURL),
+              let fittedSize = aspectFitSize(
+                sourceSize: sourceImage.size,
+                boundingSize: size
+              ),
+              let bitmap = NSBitmapImageRep(
+                bitmapDataPlanes: nil,
+                pixelsWide: max(Int(ceil(fittedSize.width * scale)), 1),
+                pixelsHigh: max(Int(ceil(fittedSize.height * scale)), 1),
+                bitsPerSample: 8,
+                samplesPerPixel: 4,
+                hasAlpha: true,
+                isPlanar: false,
+                colorSpaceName: .deviceRGB,
+                bytesPerRow: 0,
+                bitsPerPixel: 0
+              ),
+              let context = NSGraphicsContext(bitmapImageRep: bitmap) else {
+            return nil
+        }
+
+        bitmap.size = fittedSize
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = context
+        context.imageInterpolation = .high
         sourceImage.draw(in: CGRect(origin: .zero, size: fittedSize))
-        targetImage.unlockFocus()
-        return targetImage
+        NSGraphicsContext.restoreGraphicsState()
+
+        let image = NSImage(size: fittedSize)
+        image.addRepresentation(bitmap)
+        return image
     }
 
     nonisolated static func aspectFitSize(
