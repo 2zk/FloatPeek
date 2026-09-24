@@ -11,6 +11,8 @@
 		95B5746C2C39000100A00001 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95B574612C39000100A00001 /* ContentView.swift */; };
 		95B5746D2C39000100A00001 /* ImageFile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95B574622C39000100A00001 /* ImageFile.swift */; };
 		95B5746E2C39000100A00001 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95B574632C39000100A00001 /* AppSettings.swift */; };
+		A10000012C39000100A00001 /* AppPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000022C39000100A00001 /* AppPreferences.swift */; };
+		A10000032C39000100A00001 /* KeyboardShortcut.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000042C39000100A00001 /* KeyboardShortcut.swift */; };
 		95B5746F2C39000100A00001 /* FolderManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95B574642C39000100A00001 /* FolderManager.swift */; };
 		95B574702C39000100A00001 /* ImageFileLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95B574652C39000100A00001 /* ImageFileLoader.swift */; };
 		95B574892C39000100A00001 /* ThumbnailProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95B5748A2C39000100A00001 /* ThumbnailProvider.swift */; };
@@ -19,7 +21,7 @@
 		95B574912C39000100A00001 /* WindowManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95B574942C39000100A00001 /* WindowManager.swift */; };
 		95B574922C39000100A00001 /* HotKeyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95B574952C39000100A00001 /* HotKeyManager.swift */; };
 		95B574932C39000100A00001 /* WindowAccessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95B574962C39000100A00001 /* WindowAccessor.swift */; };
-		95B574972C39000100A00001 /* ShortcutSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95B574992C39000100A00001 /* ShortcutSettingsView.swift */; };
+		95B574972C39000100A00001 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95B574992C39000100A00001 /* SettingsView.swift */; };
 		95B574982C39000100A00001 /* ShortcutRecorderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95B5749A2C39000100A00001 /* ShortcutRecorderView.swift */; };
 		95B5749B2C39000100A00001 /* FileDragInteractionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95B5749C2C39000100A00001 /* FileDragInteractionView.swift */; };
 		95B574712C39000100A00001 /* ImageBrowserViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95B574662C39000100A00001 /* ImageBrowserViewModel.swift */; };
@@ -69,6 +71,8 @@
 		95B574612C39000100A00001 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		95B574622C39000100A00001 /* ImageFile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageFile.swift; sourceTree = "<group>"; };
 		95B574632C39000100A00001 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
+		A10000022C39000100A00001 /* AppPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppPreferences.swift; sourceTree = "<group>"; };
+		A10000042C39000100A00001 /* KeyboardShortcut.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardShortcut.swift; sourceTree = "<group>"; };
 		95B574642C39000100A00001 /* FolderManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderManager.swift; sourceTree = "<group>"; };
 		95B574652C39000100A00001 /* ImageFileLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageFileLoader.swift; sourceTree = "<group>"; };
 		95B5748A2C39000100A00001 /* ThumbnailProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThumbnailProvider.swift; sourceTree = "<group>"; };
@@ -77,7 +81,7 @@
 		95B574942C39000100A00001 /* WindowManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowManager.swift; sourceTree = "<group>"; };
 		95B574952C39000100A00001 /* HotKeyManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotKeyManager.swift; sourceTree = "<group>"; };
 		95B574962C39000100A00001 /* WindowAccessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowAccessor.swift; sourceTree = "<group>"; };
-		95B574992C39000100A00001 /* ShortcutSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutSettingsView.swift; sourceTree = "<group>"; };
+		95B574992C39000100A00001 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		95B5749A2C39000100A00001 /* ShortcutRecorderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutRecorderView.swift; sourceTree = "<group>"; };
 		95B5749C2C39000100A00001 /* FileDragInteractionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileDragInteractionView.swift; sourceTree = "<group>"; };
 		95B574662C39000100A00001 /* ImageBrowserViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageBrowserViewModel.swift; sourceTree = "<group>"; };
@@ -172,6 +176,8 @@
 				95B574622C39000100A00001 /* ImageFile.swift */,
 				E10000022C39000100A00001 /* ImageSelection.swift */,
 				95B574632C39000100A00001 /* AppSettings.swift */,
+				A10000022C39000100A00001 /* AppPreferences.swift */,
+				A10000042C39000100A00001 /* KeyboardShortcut.swift */,
 				C10000022C39000100A00001 /* AppEnvironment.swift */,
 				B10000022C39000100A00001 /* Localization.swift */,
 				B20000022C39000100A00001 /* FolderTab.swift */,
@@ -215,7 +221,7 @@
 				95B5746A2C39000100A00001 /* StateMessageView.swift */,
 				95B5748E2C39000100A00001 /* KeyboardEventBridge.swift */,
 				95B574962C39000100A00001 /* WindowAccessor.swift */,
-				95B574992C39000100A00001 /* ShortcutSettingsView.swift */,
+				95B574992C39000100A00001 /* SettingsView.swift */,
 				95B5749A2C39000100A00001 /* ShortcutRecorderView.swift */,
 				95B5749C2C39000100A00001 /* FileDragInteractionView.swift */,
 			);
@@ -351,6 +357,8 @@
 				95B5746D2C39000100A00001 /* ImageFile.swift in Sources */,
 				E10000012C39000100A00001 /* ImageSelection.swift in Sources */,
 				95B5746E2C39000100A00001 /* AppSettings.swift in Sources */,
+				A10000012C39000100A00001 /* AppPreferences.swift in Sources */,
+				A10000032C39000100A00001 /* KeyboardShortcut.swift in Sources */,
 				B10000012C39000100A00001 /* Localization.swift in Sources */,
 				B20000012C39000100A00001 /* FolderTab.swift in Sources */,
 				C10000012C39000100A00001 /* AppEnvironment.swift in Sources */,
@@ -372,7 +380,7 @@
 				95B574752C39000100A00001 /* StateMessageView.swift in Sources */,
 				95B5748D2C39000100A00001 /* KeyboardEventBridge.swift in Sources */,
 				95B574932C39000100A00001 /* WindowAccessor.swift in Sources */,
-				95B574972C39000100A00001 /* ShortcutSettingsView.swift in Sources */,
+				95B574972C39000100A00001 /* SettingsView.swift in Sources */,
 				95B574982C39000100A00001 /* ShortcutRecorderView.swift in Sources */,
 				95B5749B2C39000100A00001 /* FileDragInteractionView.swift in Sources */,
 				F20000012C39000100A00001 /* UpdateManager.swift in Sources */,

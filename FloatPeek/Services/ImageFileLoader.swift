@@ -18,7 +18,7 @@ struct ImageFileLoader: @unchecked Sendable {
 
     init(
         fileManager: FileManager = .default,
-        displayedFileExtensions: Set<String> = AppSettings.loadDisplayedFileExtensions()
+        displayedFileExtensions: Set<String> = AppSettings.defaultDisplayedFileExtensions
     ) {
         self.fileManager = fileManager
         self.displayedFileExtensions = displayedFileExtensions

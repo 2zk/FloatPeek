@@ -6,10 +6,6 @@ struct SettingsView: View {
     private static let settingsSize = CGSize(width: 840, height: 720)
     private static let foldersColumnWidth: CGFloat = 440
     private static let detailsColumnWidth: CGFloat = 336
-    private static let extensionColumns = Array(
-        repeating: GridItem(.flexible(minimum: 60), spacing: 8, alignment: .leading),
-        count: 4
-    )
 
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var localization: LocalizationManager
@@ -60,7 +56,7 @@ struct SettingsView: View {
 
             Divider()
 
-            updatesSection
+            UpdateSettingsSection(viewModel: viewModel, updateManager: updateManager)
         }
     }
 
@@ -87,7 +83,14 @@ struct SettingsView: View {
                 ScrollView(.vertical) {
                     LazyVStack(spacing: 8) {
                         ForEach($viewModel.tabs) { $tab in
-                            tabSettingsRow(tab: $tab)
+                            TabSettingsRow(
+                                tab: $tab,
+                                isSelected: viewModel.selectedTabID == tab.id,
+                                onSelect: { viewModel.selectTab(id: tab.id) },
+                                onChooseFolder: { viewModel.chooseFolder(for: tab.id) },
+                                onRemove: { viewModel.removeTab(id: tab.id) },
+                                onBeginDrag: { draggedTabID = tab.id }
+                            )
                                 .onDrop(
                                     of: [UTType.text],
                                     delegate: FolderReorderDropDelegate(
@@ -131,14 +134,18 @@ struct SettingsView: View {
             Text(localization.localized("Displayed File Extensions"))
                 .font(.subheadline)
 
-            fileExtensionGroup(
+            FileExtensionGroup(
                 title: localization.localized("Images and PDFs"),
-                fileExtensions: AppSettings.thumbnailFileExtensions
+                fileExtensions: AppSettings.thumbnailFileExtensions,
+                displayedFileExtensions: viewModel.displayedFileExtensions,
+                onChange: viewModel.setDisplayedFileExtensions
             )
 
-            fileExtensionGroup(
+            FileExtensionGroup(
                 title: localization.localized("Other Files"),
-                fileExtensions: AppSettings.iconFileExtensions
+                fileExtensions: AppSettings.iconFileExtensions,
+                displayedFileExtensions: viewModel.displayedFileExtensions,
+                onChange: viewModel.setDisplayedFileExtensions
             )
 
             Text(localization.localized("Quick Look Background"))
@@ -191,7 +198,195 @@ struct SettingsView: View {
         }
     }
 
-    private var updatesSection: some View {
+    private var actionButtons: some View {
+        HStack {
+            Button(localization.localized("Restore Default")) {
+                viewModel.restoreDefaultShortcut()
+            }
+
+            Spacer()
+
+            Button(localization.localized("Cancel")) {
+                dismiss()
+            }
+
+            Button(localization.localized("Save")) {
+                if viewModel.save() {
+                    dismiss()
+                }
+            }
+            .keyboardShortcut(.defaultAction)
+        }
+    }
+
+    private var quickLookBackgroundColorBinding: Binding<Color> {
+        Binding(
+            get: {
+                Color(
+                    .sRGB,
+                    red: viewModel.quickLookBackgroundColor.red,
+                    green: viewModel.quickLookBackgroundColor.green,
+                    blue: viewModel.quickLookBackgroundColor.blue,
+                    opacity: 1
+                )
+            },
+            set: { color in
+                guard let color = NSColor(color).usingColorSpace(.sRGB) else {
+                    return
+                }
+
+                viewModel.quickLookBackgroundColor.red = color.redComponent
+                viewModel.quickLookBackgroundColor.green = color.greenComponent
+                viewModel.quickLookBackgroundColor.blue = color.blueComponent
+            }
+        )
+    }
+}
+
+private struct FolderReorderDropDelegate: DropDelegate {
+    let targetID: FolderTab.ID
+    @Binding var draggedTabID: FolderTab.ID?
+    let onMove: (FolderTab.ID, FolderTab.ID) -> Void
+
+    func dropEntered(info: DropInfo) {
+        guard let draggedTabID,
+              draggedTabID != targetID else {
+            return
+        }
+
+        onMove(draggedTabID, targetID)
+    }
+
+    func dropUpdated(info: DropInfo) -> DropProposal? {
+        DropProposal(operation: .move)
+    }
+
+    func performDrop(info: DropInfo) -> Bool {
+        draggedTabID = nil
+        return true
+    }
+}
+
+private struct TabSettingsRow: View {
+    @EnvironmentObject private var localization: LocalizationManager
+
+    @Binding var tab: FolderTab
+    let isSelected: Bool
+    let onSelect: () -> Void
+    let onChooseFolder: () -> Void
+    let onRemove: () -> Void
+    let onBeginDrag: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Image(systemName: "line.3.horizontal")
+                    .foregroundStyle(.secondary)
+                    .frame(width: 18, height: 28)
+                    .contentShape(Rectangle())
+                    .help(localization.localized("Drag to reorder"))
+                    .onDrag {
+                        onBeginDrag()
+                        return NSItemProvider(object: tab.id.uuidString as NSString)
+                    }
+
+                Button(action: onSelect) {
+                    Image(systemName: isSelected ? "circle.inset.filled" : "circle")
+                }
+                .buttonStyle(.plain)
+                .help(localization.localized("Show this tab"))
+
+                TextField(localization.localized("Tab Name"), text: $tab.name)
+
+                Button(localization.localized("Choose Folder…"), action: onChooseFolder)
+
+                Button(action: onRemove) {
+                    Image(systemName: "xmark")
+                }
+                .help(localization.localized("Remove Tab"))
+            }
+
+            Text(
+                tab.folderPath.isEmpty
+                    ? localization.localized("No folder selected")
+                    : tab.folderPath
+            )
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
+            .truncationMode(.middle)
+            .padding(.leading, 54)
+        }
+        .padding(10)
+        .background {
+            RoundedRectangle(cornerRadius: 8)
+                .fill(isSelected ? Color.accentColor.opacity(0.12) : Color.secondary.opacity(0.08))
+        }
+    }
+}
+
+private struct FileExtensionGroup: View {
+    private static let columns = Array(
+        repeating: GridItem(.flexible(minimum: 60), spacing: 8, alignment: .leading),
+        count: 4
+    )
+
+    @EnvironmentObject private var localization: LocalizationManager
+
+    let title: String
+    let fileExtensions: [String]
+    let displayedFileExtensions: Set<String>
+    let onChange: (_ fileExtensions: [String], _ isDisplayed: Bool) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 8) {
+                Text(title)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Spacer()
+
+                Button(localization.localized("Select All")) {
+                    onChange(fileExtensions, true)
+                }
+                .buttonStyle(.borderless)
+                .controlSize(.small)
+                .disabled(Set(fileExtensions).isSubset(of: displayedFileExtensions))
+
+                Button(localization.localized("Deselect All")) {
+                    onChange(fileExtensions, false)
+                }
+                .buttonStyle(.borderless)
+                .controlSize(.small)
+                .disabled(Set(fileExtensions).isDisjoint(with: displayedFileExtensions))
+            }
+
+            LazyVGrid(columns: Self.columns, alignment: .leading, spacing: 4) {
+                ForEach(fileExtensions, id: \.self) { fileExtension in
+                    Toggle(".\(fileExtension)", isOn: binding(for: fileExtension))
+                        .toggleStyle(.checkbox)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+        }
+    }
+
+    private func binding(for fileExtension: String) -> Binding<Bool> {
+        Binding(
+            get: { displayedFileExtensions.contains(fileExtension) },
+            set: { isDisplayed in onChange([fileExtension], isDisplayed) }
+        )
+    }
+}
+
+private struct UpdateSettingsSection: View {
+    @EnvironmentObject private var localization: LocalizationManager
+
+    @ObservedObject var viewModel: SettingsViewModel
+    @ObservedObject var updateManager: UpdateManager
+
+    var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(localization.localized("Updates"))
                 .font(.headline)
@@ -245,204 +440,7 @@ struct SettingsView: View {
         }
     }
 
-    private var actionButtons: some View {
-        HStack {
-            Button(localization.localized("Restore Default")) {
-                viewModel.restoreDefaultShortcut()
-            }
-
-            Spacer()
-
-            Button(localization.localized("Cancel")) {
-                dismiss()
-            }
-
-            Button(localization.localized("Save")) {
-                if viewModel.save() {
-                    dismiss()
-                }
-            }
-            .keyboardShortcut(.defaultAction)
-        }
-    }
-
-    private func tabSettingsRow(tab: Binding<FolderTab>) -> some View {
-        let tabID = tab.wrappedValue.id
-        let isSelected = viewModel.selectedTabID == tabID
-
-        return VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 8) {
-                Image(systemName: "line.3.horizontal")
-                    .foregroundStyle(.secondary)
-                    .frame(width: 18, height: 28)
-                    .contentShape(Rectangle())
-                    .help(localization.localized("Drag to reorder"))
-                    .onDrag {
-                        draggedTabID = tabID
-                        return NSItemProvider(object: tabID.uuidString as NSString)
-                    }
-
-                Button {
-                    viewModel.selectTab(id: tabID)
-                } label: {
-                    Image(systemName: isSelected ? "circle.inset.filled" : "circle")
-                }
-                .buttonStyle(.plain)
-                .help(localization.localized("Show this tab"))
-
-                TextField(localization.localized("Tab Name"), text: tab.name)
-
-                Button(localization.localized("Choose Folder…")) {
-                    viewModel.chooseFolder(for: tabID)
-                }
-
-                Button {
-                    viewModel.removeTab(id: tabID)
-                } label: {
-                    Image(systemName: "xmark")
-                }
-                .help(localization.localized("Remove Tab"))
-            }
-
-            Text(
-                tab.wrappedValue.folderPath.isEmpty
-                    ? localization.localized("No folder selected")
-                    : tab.wrappedValue.folderPath
-            )
-            .font(.caption)
-            .foregroundStyle(.secondary)
-            .lineLimit(1)
-            .truncationMode(.middle)
-            .padding(.leading, 54)
-        }
-        .padding(10)
-        .background {
-            RoundedRectangle(cornerRadius: 8)
-                .fill(isSelected ? Color.accentColor.opacity(0.12) : Color.secondary.opacity(0.08))
-        }
-    }
-
-    private func displayedFileExtensionBinding(_ fileExtension: String) -> Binding<Bool> {
-        Binding(
-            get: {
-                viewModel.displayedFileExtensions.contains(fileExtension)
-            },
-            set: { isDisplayed in
-                viewModel.setDisplayedFileExtensions(
-                    [fileExtension],
-                    isDisplayed: isDisplayed
-                )
-            }
-        )
-    }
-
-    private func fileExtensionGroup(
-        title: String,
-        fileExtensions: [String]
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 8) {
-                Text(title)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-
-                Spacer()
-
-                Button(localization.localized("Select All")) {
-                    viewModel.setDisplayedFileExtensions(
-                        fileExtensions,
-                        isDisplayed: true
-                    )
-                }
-                .buttonStyle(.borderless)
-                .controlSize(.small)
-                .disabled(
-                    Set(fileExtensions).isSubset(
-                        of: viewModel.displayedFileExtensions
-                    )
-                )
-
-                Button(localization.localized("Deselect All")) {
-                    viewModel.setDisplayedFileExtensions(
-                        fileExtensions,
-                        isDisplayed: false
-                    )
-                }
-                .buttonStyle(.borderless)
-                .controlSize(.small)
-                .disabled(
-                    Set(fileExtensions).isDisjoint(
-                        with: viewModel.displayedFileExtensions
-                    )
-                )
-            }
-
-            LazyVGrid(
-                columns: Self.extensionColumns,
-                alignment: .leading,
-                spacing: 4
-            ) {
-                ForEach(fileExtensions, id: \.self) { fileExtension in
-                    Toggle(
-                        ".\(fileExtension)",
-                        isOn: displayedFileExtensionBinding(fileExtension)
-                    )
-                    .toggleStyle(.checkbox)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
-            }
-        }
-    }
-
-    private var quickLookBackgroundColorBinding: Binding<Color> {
-        Binding(
-            get: {
-                Color(
-                    .sRGB,
-                    red: viewModel.quickLookBackgroundColor.red,
-                    green: viewModel.quickLookBackgroundColor.green,
-                    blue: viewModel.quickLookBackgroundColor.blue,
-                    opacity: 1
-                )
-            },
-            set: { color in
-                guard let color = NSColor(color).usingColorSpace(.sRGB) else {
-                    return
-                }
-
-                viewModel.quickLookBackgroundColor.red = color.redComponent
-                viewModel.quickLookBackgroundColor.green = color.greenComponent
-                viewModel.quickLookBackgroundColor.blue = color.blueComponent
-            }
-        )
-    }
-
     private var appVersion: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
-    }
-
-}
-
-private struct FolderReorderDropDelegate: DropDelegate {
-    let targetID: FolderTab.ID
-    @Binding var draggedTabID: FolderTab.ID?
-    let onMove: (FolderTab.ID, FolderTab.ID) -> Void
-
-    func dropEntered(info: DropInfo) {
-        guard let draggedTabID,
-              draggedTabID != targetID else {
-            return
-        }
-
-        onMove(draggedTabID, targetID)
-    }
-
-    func dropUpdated(info: DropInfo) -> DropProposal? {
-        DropProposal(operation: .move)
-    }
-
-    func performDrop(info: DropInfo) -> Bool {
-        draggedTabID = nil
-        return true
     }
 }

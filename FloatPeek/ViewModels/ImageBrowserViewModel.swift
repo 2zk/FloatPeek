@@ -50,7 +50,9 @@ final class ImageBrowserViewModel: ObservableObject {
 
     init(
         initialFolderURL: URL? = nil,
-        imageFileLoader: ImageFileLoader = ImageFileLoader(),
+        imageFileLoader: ImageFileLoader = ImageFileLoader(
+            displayedFileExtensions: AppPreferences.shared.displayedFileExtensions
+        ),
         fileOpener: FileOpening = FileOpener(),
         fileActionManager: FileActionHandling = FileActionManager(),
         filePreviewer: FilePreviewing = QuickLookManager.shared,

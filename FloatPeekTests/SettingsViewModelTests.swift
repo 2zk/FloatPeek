@@ -1,3 +1,4 @@
+import AppKit
 import Carbon
 import XCTest
 @testable import FloatPeek
@@ -91,6 +92,54 @@ final class SettingsViewModelTests: XCTestCase {
         XCTAssertEqual(
             AppSettings.loadDisplayedFileExtensions(from: context.preferences),
             AppSettings.defaultDisplayedFileExtensions
+        )
+    }
+
+    func testKeyboardShortcutDisplayNameListsModifiersAndKey() {
+        let defaultShortcut = AppSettings.defaultShortcut
+        XCTAssertEqual(defaultShortcut.displayName, "⌘⇧1")
+        XCTAssertTrue(defaultShortcut.isValid)
+
+        let allModifiers = KeyboardShortcut(
+            keyCode: UInt32(kVK_F12),
+            carbonModifiers: UInt32(cmdKey | optionKey | controlKey | shiftKey)
+        )
+        XCTAssertEqual(allModifiers.displayName, "⌘⌥⌃⇧F12")
+
+        let space = KeyboardShortcut(
+            keyCode: UInt32(kVK_Space),
+            carbonModifiers: UInt32(controlKey)
+        )
+        XCTAssertEqual(space.displayName, "⌃" + localized("Space"))
+
+        let unsupported = KeyboardShortcut(
+            keyCode: UInt32(kVK_ANSI_Minus),
+            carbonModifiers: UInt32(cmdKey)
+        )
+        XCTAssertFalse(unsupported.isValid)
+        XCTAssertEqual(unsupported.displayName, "⌘" + localized("Unknown"))
+    }
+
+    func testKeyboardShortcutReadsCarbonModifiersFromEvent() throws {
+        let event = try XCTUnwrap(NSEvent.keyEvent(
+            with: .keyDown,
+            location: .zero,
+            modifierFlags: [.command, .shift],
+            timestamp: 0,
+            windowNumber: 0,
+            context: nil,
+            characters: "k",
+            charactersIgnoringModifiers: "k",
+            isARepeat: false,
+            keyCode: UInt16(kVK_ANSI_K)
+        ))
+
+        XCTAssertEqual(
+            KeyboardShortcut(event: event),
+            KeyboardShortcut(
+                keyCode: UInt32(kVK_ANSI_K),
+                carbonModifiers: UInt32(cmdKey | shiftKey)
+            )
         )
     }
 
