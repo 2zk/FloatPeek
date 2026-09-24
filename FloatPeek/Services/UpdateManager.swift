@@ -71,8 +71,10 @@ final class SparkleUpdateDriver: UpdateDriving {
         updaterController.updater.lastUpdateCheckDate
     }
 
-    init(bundle: Bundle = .main) {
-        updaterDelegate = SparkleUpdateLifecycleDelegate()
+    init(bundle: Bundle = .main, coordinator: AppCoordinator = .shared) {
+        updaterDelegate = SparkleUpdateLifecycleDelegate(
+            dismissSettings: coordinator.dismissSettings
+        )
         updaterController = SPUStandardUpdaterController(
             startingUpdater: false,
             updaterDelegate: updaterDelegate,
@@ -151,9 +153,7 @@ final class SparkleUpdateLifecycleDelegate: NSObject, SPUUpdaterDelegate {
     private let requestApplicationTermination: () -> Void
 
     init(
-        dismissSettings: @escaping () -> Void = {
-            AppCoordinator.shared.dismissSettings()
-        },
+        dismissSettings: @escaping () -> Void,
         requestApplicationTermination: @escaping () -> Void = {
             NSApp.terminate(nil)
         }

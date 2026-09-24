@@ -6,10 +6,18 @@ final class WindowManager: NSObject, NSWindowDelegate {
     static let defaultWindowSize = CGSize(width: 160, height: 600)
 
     private let userDefaults: PreferencesStoring
+    private let coordinator: AppCoordinator
+    private let quickLookManager: QuickLookManager
     private weak var managedWindow: NSWindow?
 
-    private override init() {
-        userDefaults = AppEnvironment.preferences
+    init(
+        userDefaults: PreferencesStoring = AppEnvironment.preferences,
+        coordinator: AppCoordinator = .shared,
+        quickLookManager: QuickLookManager = .shared
+    ) {
+        self.userDefaults = userDefaults
+        self.coordinator = coordinator
+        self.quickLookManager = quickLookManager
         super.init()
     }
 
@@ -85,12 +93,12 @@ final class WindowManager: NSObject, NSWindowDelegate {
     }
 
     private func notifyWindowBecameVisible() {
-        AppCoordinator.shared.windowBecameVisible()
+        coordinator.windowBecameVisible()
     }
 
     private func notifyMonitoringShouldStop() {
-        QuickLookManager.shared.closePreviewIfVisible()
-        AppCoordinator.shared.windowBecameHidden()
+        quickLookManager.closePreviewIfVisible()
+        coordinator.windowBecameHidden()
     }
 
     private func resolvedWindow() -> NSWindow? {

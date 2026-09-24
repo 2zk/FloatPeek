@@ -1,3 +1,4 @@
+import AppKit
 import XCTest
 @testable import FloatPeek
 
@@ -20,14 +21,32 @@ final class AppCoordinatorTests: XCTestCase {
         XCTAssertFalse(coordinator.isShowingSettings)
     }
 
-    func testRepeatedVisibilityChangesProduceDistinctRevisions() {
+    func testWindowVisibilityFollowsLatestChange() {
         let coordinator = AppCoordinator()
+        XCTAssertTrue(coordinator.isWindowVisible)
 
-        coordinator.windowBecameVisible()
-        coordinator.windowBecameVisible()
         coordinator.windowBecameHidden()
+        XCTAssertFalse(coordinator.isWindowVisible)
 
-        XCTAssertEqual(coordinator.windowVisibleRevision, 2)
-        XCTAssertEqual(coordinator.windowHiddenRevision, 1)
+        coordinator.windowBecameVisible()
+        XCTAssertTrue(coordinator.isWindowVisible)
+    }
+
+    func testWindowManagerReportsMiniaturizeAndRestoreToCoordinator() {
+        let coordinator = AppCoordinator()
+        let windowManager = WindowManager(
+            userDefaults: InMemoryPreferences(),
+            coordinator: coordinator
+        )
+
+        windowManager.windowDidMiniaturize(
+            Notification(name: NSWindow.didMiniaturizeNotification)
+        )
+        XCTAssertFalse(coordinator.isWindowVisible)
+
+        windowManager.windowDidDeminiaturize(
+            Notification(name: NSWindow.didDeminiaturizeNotification)
+        )
+        XCTAssertTrue(coordinator.isWindowVisible)
     }
 }

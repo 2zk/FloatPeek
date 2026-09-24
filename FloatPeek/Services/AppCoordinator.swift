@@ -5,8 +5,8 @@ final class AppCoordinator: ObservableObject {
     static let shared = AppCoordinator()
 
     @Published var isShowingSettings = false
-    @Published private(set) var windowVisibleRevision = 0
-    @Published private(set) var windowHiddenRevision = 0
+    /// メインウィンドウが画面に表示されているか。起動時は SwiftUI が表示する
+    @Published private(set) var isWindowVisible = true
 
     func requestSettings() {
         isShowingSettings = true
@@ -17,10 +17,10 @@ final class AppCoordinator: ObservableObject {
     }
 
     func windowBecameVisible() {
-        windowVisibleRevision += 1
+        isWindowVisible = true
     }
 
     func windowBecameHidden() {
-        windowHiddenRevision += 1
+        isWindowVisible = false
     }
 }

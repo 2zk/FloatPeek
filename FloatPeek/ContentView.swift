@@ -139,12 +139,13 @@ struct ContentView: View {
         .onDisappear {
             viewModel.stopMonitoring()
         }
-        .onChange(of: appCoordinator.windowVisibleRevision) { _, _ in
-            viewModel.reload()
-            viewModel.startMonitoring()
-        }
-        .onChange(of: appCoordinator.windowHiddenRevision) { _, _ in
-            viewModel.stopMonitoring()
+        .onChange(of: appCoordinator.isWindowVisible) { _, isWindowVisible in
+            if isWindowVisible {
+                viewModel.reload()
+                viewModel.startMonitoring()
+            } else {
+                viewModel.stopMonitoring()
+            }
         }
         .onChange(of: tabManager.selectedTabID) { _, _ in
             syncSelectedTab()
