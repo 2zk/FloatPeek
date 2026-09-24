@@ -1,10 +1,6 @@
 import SwiftUI
 
 struct ContentView: View {
-    private static let gridColumnWidth: CGFloat = 140
-    private static let gridColumnSpacing: CGFloat = 12
-    private static let gridHorizontalPadding: CGFloat = 12
-
     @StateObject private var viewModel = ImageBrowserViewModel()
     @EnvironmentObject private var localization: LocalizationManager
     @EnvironmentObject private var tabManager: FolderTabManager
@@ -217,33 +213,9 @@ struct ContentView: View {
             return true
         case .space:
             return previewSelectedImage()
-        case .leftArrow(let extendingSelection):
+        case .arrow(let direction, let extendingSelection):
             let didMove = viewModel.moveSelection(
-                .left,
-                columnCount: displayedGridColumnCount,
-                extendingSelection: extendingSelection
-            )
-            updateScrollTargetAfterKeyboardSelection(didMove)
-            return didMove
-        case .rightArrow(let extendingSelection):
-            let didMove = viewModel.moveSelection(
-                .right,
-                columnCount: displayedGridColumnCount,
-                extendingSelection: extendingSelection
-            )
-            updateScrollTargetAfterKeyboardSelection(didMove)
-            return didMove
-        case .upArrow(let extendingSelection):
-            let didMove = viewModel.moveSelection(
-                .up,
-                columnCount: displayedGridColumnCount,
-                extendingSelection: extendingSelection
-            )
-            updateScrollTargetAfterKeyboardSelection(didMove)
-            return didMove
-        case .downArrow(let extendingSelection):
-            let didMove = viewModel.moveSelection(
-                .down,
+                direction,
                 columnCount: displayedGridColumnCount,
                 extendingSelection: extendingSelection
             )
@@ -288,9 +260,7 @@ struct ContentView: View {
     }
 
     private func updateGridColumnCount(for width: CGFloat) {
-        let contentWidth = max(width - Self.gridHorizontalPadding * 2, 0)
-        let columnWidthWithSpacing = Self.gridColumnWidth + Self.gridColumnSpacing
-        gridColumnCount = max(Int((contentWidth + Self.gridColumnSpacing) / columnWidthWithSpacing), 1)
+        gridColumnCount = ImageGridLayout.columnCount(forAvailableWidth: width)
     }
 
     private var displayedGridColumnCount: Int {

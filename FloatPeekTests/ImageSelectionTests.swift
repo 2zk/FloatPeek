@@ -97,4 +97,13 @@ final class ImageSelectionTests: XCTestCase {
         XCTAssertEqual(selection.selectedIDs, [ids[1]])
         XCTAssertEqual(selection.focusedID, ids[1])
     }
+
+    func testGridColumnCountMatchesColumnWidthAndSpacing() {
+        XCTAssertEqual(ImageGridLayout.columnCount(forAvailableWidth: 0), 1)
+        XCTAssertEqual(ImageGridLayout.columnCount(forAvailableWidth: 160), 1)
+        // 余白12×2 + 列140×2 + 間隔12 = 316
+        XCTAssertEqual(ImageGridLayout.columnCount(forAvailableWidth: 315), 1)
+        XCTAssertEqual(ImageGridLayout.columnCount(forAvailableWidth: 316), 2)
+        XCTAssertEqual(ImageGridLayout.columnCount(forAvailableWidth: 468), 3)
+    }
 }

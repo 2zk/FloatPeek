@@ -1,4 +1,5 @@
 @preconcurrency import AppKit
+import Carbon
 import SwiftUI
 
 struct KeyboardEventBridge: NSViewRepresentable {
@@ -66,10 +67,7 @@ enum HandledKey: Sendable {
     case `return`
     case escape
     case space
-    case leftArrow(extendingSelection: Bool)
-    case rightArrow(extendingSelection: Bool)
-    case upArrow(extendingSelection: Bool)
-    case downArrow(extendingSelection: Bool)
+    case arrow(ImageSelection.Direction, extendingSelection: Bool)
     case selectAll
     case copy
     case moveToTrash
@@ -78,31 +76,32 @@ enum HandledKey: Sendable {
 
     init?(event: NSEvent) {
         let modifiers = event.modifierFlags.intersection([.command, .option, .control, .shift])
+        let extendingSelection = modifiers.contains(.shift)
 
-        switch event.keyCode {
-        case 36, 76:
+        switch Int(event.keyCode) {
+        case kVK_Return, kVK_ANSI_KeypadEnter:
             self = .return
-        case 53:
+        case kVK_Escape:
             self = .escape
-        case 49:
+        case kVK_Space:
             self = .space
-        case 123:
-            self = .leftArrow(extendingSelection: modifiers.contains(.shift))
-        case 124:
-            self = .rightArrow(extendingSelection: modifiers.contains(.shift))
-        case 125:
-            self = .downArrow(extendingSelection: modifiers.contains(.shift))
-        case 126:
-            self = .upArrow(extendingSelection: modifiers.contains(.shift))
-        case 0 where modifiers == .command || modifiers == .control:
+        case kVK_LeftArrow:
+            self = .arrow(.left, extendingSelection: extendingSelection)
+        case kVK_RightArrow:
+            self = .arrow(.right, extendingSelection: extendingSelection)
+        case kVK_DownArrow:
+            self = .arrow(.down, extendingSelection: extendingSelection)
+        case kVK_UpArrow:
+            self = .arrow(.up, extendingSelection: extendingSelection)
+        case kVK_ANSI_A where modifiers == .command || modifiers == .control:
             self = .selectAll
-        case 8 where modifiers == .command:
+        case kVK_ANSI_C where modifiers == .command:
             self = .copy
-        case 48 where modifiers == .control:
+        case kVK_Tab where modifiers == .control:
             self = .selectNextTab
-        case 48 where modifiers == [.control, .shift]:
+        case kVK_Tab where modifiers == [.control, .shift]:
             self = .selectPreviousTab
-        case 51, 117:
+        case kVK_Delete, kVK_ForwardDelete:
             guard modifiers.isEmpty, !event.isARepeat else {
                 return nil
             }

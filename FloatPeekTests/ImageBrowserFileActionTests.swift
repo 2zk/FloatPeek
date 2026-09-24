@@ -124,7 +124,7 @@ final class ImageBrowserFileActionTests: XCTestCase {
         let shiftedArrow = try XCTUnwrap(
             makeKeyEvent(modifierFlags: .shift, keyCode: 124)
         )
-        guard case .rightArrow(let extendingSelection) = HandledKey(event: shiftedArrow) else {
+        guard case .arrow(.right, let extendingSelection) = HandledKey(event: shiftedArrow) else {
             return XCTFail("Shift + 右矢印が移動操作として認識されない")
         }
         XCTAssertTrue(extendingSelection)
@@ -132,10 +132,27 @@ final class ImageBrowserFileActionTests: XCTestCase {
         let plainArrow = try XCTUnwrap(
             makeKeyEvent(modifierFlags: [], keyCode: 124)
         )
-        guard case .rightArrow(let extendingSelection) = HandledKey(event: plainArrow) else {
+        guard case .arrow(.right, let extendingSelection) = HandledKey(event: plainArrow) else {
             return XCTFail("右矢印が移動操作として認識されない")
         }
         XCTAssertFalse(extendingSelection)
+    }
+
+    func testArrowKeysMapToSelectionDirections() throws {
+        let expectedDirections: [(UInt16, ImageSelection.Direction)] = [
+            (123, .left),
+            (124, .right),
+            (125, .down),
+            (126, .up)
+        ]
+
+        for (keyCode, expectedDirection) in expectedDirections {
+            let event = try XCTUnwrap(makeKeyEvent(modifierFlags: [], keyCode: keyCode))
+            guard case .arrow(let direction, _) = HandledKey(event: event) else {
+                return XCTFail("キーコード \(keyCode) が矢印キーとして認識されない")
+            }
+            XCTAssertEqual(direction, expectedDirection)
+        }
     }
 
     func testControlTabShortcutsSelectAdjacentTabs() throws {

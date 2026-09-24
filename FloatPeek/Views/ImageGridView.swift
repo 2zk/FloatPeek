@@ -1,9 +1,18 @@
 import SwiftUI
 
+enum ImageGridLayout {
+    static let columnWidth: CGFloat = 140
+    static let columnSpacing: CGFloat = 12
+    static let horizontalPadding: CGFloat = 12
+
+    static func columnCount(forAvailableWidth width: CGFloat) -> Int {
+        let contentWidth = max(width - horizontalPadding * 2, 0)
+        let columnWidthWithSpacing = columnWidth + columnSpacing
+        return max(Int((contentWidth + columnSpacing) / columnWidthWithSpacing), 1)
+    }
+}
+
 struct ImageGridView: View {
-    private static let columnWidth: CGFloat = 140
-    private static let columnSpacing: CGFloat = 12
-    private static let horizontalPadding: CGFloat = 12
     private static let tileHorizontalPadding: CGFloat = 12
     private static let fixedThumbnailHeight: CGFloat = 96
     private static let fixedThumbnailSize = CGSize(width: 120, height: 96)
@@ -68,7 +77,7 @@ struct ImageGridView: View {
                         .id(image.id)
                     }
                 }
-                .padding(Self.horizontalPadding)
+                .padding(ImageGridLayout.horizontalPadding)
                 .frame(maxWidth: .infinity, alignment: .center)
             }
             .onChange(of: scrollTargetImageID) { _, scrollTargetImageID in
@@ -85,14 +94,17 @@ struct ImageGridView: View {
         if scaleImagesWithWindow {
             return [
                 GridItem(
-                    .flexible(minimum: Self.columnWidth),
-                    spacing: Self.columnSpacing
+                    .flexible(minimum: ImageGridLayout.columnWidth),
+                    spacing: ImageGridLayout.columnSpacing
                 )
             ]
         }
 
         return Array(
-            repeating: GridItem(.fixed(Self.columnWidth), spacing: Self.columnSpacing),
+            repeating: GridItem(
+                .fixed(ImageGridLayout.columnWidth),
+                spacing: ImageGridLayout.columnSpacing
+            ),
             count: max(columnCount, 1)
         )
     }
@@ -121,8 +133,8 @@ struct ImageGridView: View {
 
     private var expandedThumbnailWidth: CGFloat {
         let tileWidth = max(
-            availableWidth - Self.horizontalPadding * 2,
-            Self.columnWidth
+            availableWidth - ImageGridLayout.horizontalPadding * 2,
+            ImageGridLayout.columnWidth
         )
         return max(tileWidth - Self.tileHorizontalPadding, 1)
     }
