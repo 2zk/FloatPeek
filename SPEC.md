@@ -430,7 +430,7 @@ System Default では macOS の優先言語から英語または日本語を選�
 | `noFolderSelected` かつ項目なし | `No folders configured` / `Add a folder in Settings.` |
 | `noFolderSelected` | `No folder selected` / `Choose the folder in Settings.` |
 | `cannotAccessFolder` | `Cannot access folder` / `Choose another folder.` |
-| `noImages` | `No supported files found` / 設定またはフォルダ変更の案内 |
+| `noFiles` | `No supported files found` / 設定またはフォルダ変更の案内 |
 | `loaded` | サムネイルグリッド |
 
 ## 4.3 設定画面
