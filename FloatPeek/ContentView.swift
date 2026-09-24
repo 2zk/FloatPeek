@@ -3,11 +3,11 @@ import SwiftUI
 struct ContentView: View {
     @StateObject private var viewModel = ImageBrowserViewModel()
     @EnvironmentObject private var localization: LocalizationManager
+    @EnvironmentObject private var preferences: AppPreferences
     @EnvironmentObject private var tabManager: FolderTabManager
     @EnvironmentObject private var appCoordinator: AppCoordinator
     @EnvironmentObject private var updateManager: UpdateManager
     @State private var gridColumnCount = 1
-    @State private var scaleImagesWithWindow = AppSettings.loadScaleImagesWithWindow()
     @State private var scrollTargetImageID: ImageFile.ID?
     @State private var renamingImageID: ImageFile.ID?
 
@@ -35,7 +35,7 @@ struct ContentView: View {
                             scrollTargetImageID: scrollTargetImageID,
                             renamingImageID: renamingImageID,
                             columnCount: displayedGridColumnCount,
-                            scaleImagesWithWindow: scaleImagesWithWindow,
+                            scaleImagesWithWindow: preferences.scaleImagesWithWindow,
                             availableWidth: geometry.size.width,
                             onSelect: { image, mode in
                                 scrollTargetImageID = nil
@@ -132,7 +132,11 @@ struct ContentView: View {
                 self.renamingImageID = nil
             }
         }
+        .onChange(of: preferences.displayedFileExtensions) { _, displayedFileExtensions in
+            viewModel.setDisplayedFileExtensions(displayedFileExtensions)
+        }
         .onAppear {
+            viewModel.setDisplayedFileExtensions(preferences.displayedFileExtensions)
             syncSelectedTab()
             viewModel.startMonitoring()
         }
@@ -238,40 +242,17 @@ struct ContentView: View {
     }
 
     private var displayedGridColumnCount: Int {
-        scaleImagesWithWindow ? 1 : gridColumnCount
+        preferences.scaleImagesWithWindow ? 1 : gridColumnCount
     }
 
     private func makeSettingsViewModel() -> SettingsViewModel {
         SettingsViewModel(
-            shortcut: HotKeyManager.shared.currentShortcut(),
-            language: localization.language,
-            scaleImagesWithWindow: scaleImagesWithWindow,
-            displayedFileExtensions: AppSettings.loadDisplayedFileExtensions(),
-            quickLookBackgroundColor: AppSettings.loadQuickLookBackgroundColor(),
-            tabs: tabManager.tabs,
-            selectedTabID: tabManager.selectedTabID,
+            preferences: preferences,
             localization: localization,
             tabManager: tabManager,
-            folderChooser: FolderManager(),
+            updateSettings: updateManager,
             onReloadCurrentTab: viewModel.reload,
-            onToggleWindow: WindowManager.shared.toggleWindow,
-            onScaleImagesWithWindowChange: { isEnabled in
-                scaleImagesWithWindow = isEnabled
-            },
-            onDisplayedFileExtensionsChange: { displayedFileExtensions in
-                viewModel.setDisplayedFileExtensions(displayedFileExtensions)
-            },
-            onQuickLookBackgroundColorChange: { backgroundColor in
-                QuickLookManager.shared.applyBackgroundColor(backgroundColor)
-            },
-            automaticallyChecksForUpdates: updateManager.automaticallyChecksForUpdates,
-            onAutomaticallyChecksForUpdatesChange: { isEnabled in
-                updateManager.setAutomaticallyChecksForUpdates(isEnabled)
-            },
-            updateCheckFrequency: updateManager.updateCheckFrequency,
-            onUpdateCheckFrequencyChange: { frequency in
-                updateManager.setUpdateCheckFrequency(frequency)
-            }
+            onToggleWindow: WindowManager.shared.toggleWindow
         )
     }
 

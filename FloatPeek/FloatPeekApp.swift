@@ -5,6 +5,7 @@ import SwiftUI
 struct FloatPeekApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var localization = LocalizationManager.shared
+    @StateObject private var preferences = AppPreferences.shared
     @StateObject private var tabManager = FolderTabManager()
     @StateObject private var appCoordinator = AppCoordinator.shared
     @StateObject private var updateManager = UpdateManager()
@@ -14,6 +15,7 @@ struct FloatPeekApp: App {
             ContentView()
                 .frame(minWidth: WindowManager.defaultWindowSize.width, minHeight: 480)
                 .environmentObject(localization)
+                .environmentObject(preferences)
                 .environmentObject(tabManager)
                 .environmentObject(appCoordinator)
                 .environmentObject(updateManager)
@@ -80,7 +82,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
 
-        let shortcut = KeyboardShortcut.load()
+        let shortcut = AppPreferences.shared.shortcut
         let didRegisterShortcut = HotKeyManager.shared.registerShortcut(shortcut) {
             WindowManager.shared.toggleWindow()
         }

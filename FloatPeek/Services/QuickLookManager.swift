@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 @preconcurrency import Quartz
 
@@ -25,9 +26,20 @@ final class QuickLookManager: NSObject,
     }
 
     private var previewItem: PreviewItem?
-    private var backgroundColor = AppSettings.loadQuickLookBackgroundColor()
+    private var backgroundColor: QuickLookBackgroundColor
+    private var backgroundColorObservation: AnyCancellable?
 
-    private override init() {}
+    private init(preferences: AppPreferences = .shared) {
+        backgroundColor = preferences.quickLookBackgroundColor
+        super.init()
+        backgroundColorObservation = preferences.$quickLookBackgroundColor
+            .dropFirst()
+            .sink { [weak self] color in
+                MainActor.assumeIsolated {
+                    self?.applyBackgroundColor(color)
+                }
+            }
+    }
 
     var isPreviewing: Bool {
         guard QLPreviewPanel.sharedPreviewPanelExists(),

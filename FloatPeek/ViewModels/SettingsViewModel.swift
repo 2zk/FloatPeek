@@ -35,63 +35,43 @@ final class SettingsViewModel: ObservableObject {
         tabManager.selectedTab?.folderURL != nil
     }
 
+    private let preferences: AppPreferences
     private let localization: LocalizationManager
     private let tabManager: FolderTabManager
+    private let updateSettings: UpdateSettingsManaging
     private let shortcutRegistrar: ShortcutRegistering
     private let folderChooser: FolderChoosing
-    private let userDefaults: PreferencesStoring
     private let onReloadCurrentTab: @MainActor () -> Void
     private let onToggleWindow: @MainActor () -> Void
-    private let onScaleImagesWithWindowChange: @MainActor (Bool) -> Void
-    private let onDisplayedFileExtensionsChange: @MainActor (Set<String>) -> Void
-    private let onQuickLookBackgroundColorChange: @MainActor (QuickLookBackgroundColor) -> Void
-    private let onAutomaticallyChecksForUpdatesChange: @MainActor (Bool) -> Void
-    private let onUpdateCheckFrequencyChange: @MainActor (UpdateCheckFrequency) -> Void
 
+    /// 保存済みの設定値から下書きを作る。保存するまで各設定には反映しない
     init(
-        shortcut: KeyboardShortcut,
-        language: AppLanguage,
-        scaleImagesWithWindow: Bool,
-        displayedFileExtensions: Set<String>,
-        quickLookBackgroundColor: QuickLookBackgroundColor,
-        tabs: [FolderTab],
-        selectedTabID: FolderTab.ID?,
+        preferences: AppPreferences,
         localization: LocalizationManager,
         tabManager: FolderTabManager,
+        updateSettings: UpdateSettingsManaging,
         shortcutRegistrar: ShortcutRegistering = HotKeyManager.shared,
-        folderChooser: FolderChoosing,
-        userDefaults: PreferencesStoring = AppEnvironment.preferences,
+        folderChooser: FolderChoosing = FolderManager(),
         onReloadCurrentTab: @escaping @MainActor () -> Void,
-        onToggleWindow: @escaping @MainActor () -> Void,
-        onScaleImagesWithWindowChange: @escaping @MainActor (Bool) -> Void,
-        onDisplayedFileExtensionsChange: @escaping @MainActor (Set<String>) -> Void,
-        onQuickLookBackgroundColorChange: @escaping @MainActor (QuickLookBackgroundColor) -> Void,
-        automaticallyChecksForUpdates: Bool = true,
-        onAutomaticallyChecksForUpdatesChange: @escaping @MainActor (Bool) -> Void = { _ in },
-        updateCheckFrequency: UpdateCheckFrequency = .weekly,
-        onUpdateCheckFrequencyChange: @escaping @MainActor (UpdateCheckFrequency) -> Void = { _ in }
+        onToggleWindow: @escaping @MainActor () -> Void
     ) {
-        self.shortcut = shortcut
-        self.language = language
-        self.scaleImagesWithWindow = scaleImagesWithWindow
-        self.displayedFileExtensions = displayedFileExtensions
-        self.quickLookBackgroundColor = quickLookBackgroundColor
-        self.automaticallyChecksForUpdates = automaticallyChecksForUpdates
-        self.updateCheckFrequency = updateCheckFrequency
-        self.tabs = tabs
-        self.selectedTabID = selectedTabID
+        shortcut = preferences.shortcut
+        language = localization.language
+        scaleImagesWithWindow = preferences.scaleImagesWithWindow
+        displayedFileExtensions = preferences.displayedFileExtensions
+        quickLookBackgroundColor = preferences.quickLookBackgroundColor
+        automaticallyChecksForUpdates = updateSettings.automaticallyChecksForUpdates
+        updateCheckFrequency = updateSettings.updateCheckFrequency
+        tabs = tabManager.tabs
+        selectedTabID = tabManager.selectedTabID
+        self.preferences = preferences
         self.localization = localization
         self.tabManager = tabManager
+        self.updateSettings = updateSettings
         self.shortcutRegistrar = shortcutRegistrar
         self.folderChooser = folderChooser
-        self.userDefaults = userDefaults
         self.onReloadCurrentTab = onReloadCurrentTab
         self.onToggleWindow = onToggleWindow
-        self.onScaleImagesWithWindowChange = onScaleImagesWithWindowChange
-        self.onDisplayedFileExtensionsChange = onDisplayedFileExtensionsChange
-        self.onQuickLookBackgroundColorChange = onQuickLookBackgroundColorChange
-        self.onAutomaticallyChecksForUpdatesChange = onAutomaticallyChecksForUpdatesChange
-        self.onUpdateCheckFrequencyChange = onUpdateCheckFrequencyChange
     }
 
     func selectTab(id: FolderTab.ID) {
@@ -182,18 +162,15 @@ final class SettingsViewModel: ObservableObject {
             return false
         }
 
-        shortcut.save(to: userDefaults)
+        preferences.setShortcut(shortcut)
         localization.language = language
         tabManager.replaceTabs(tabs, selectedTabID: selectedTabID)
-        AppSettings.saveScaleImagesWithWindow(scaleImagesWithWindow, to: userDefaults)
-        AppSettings.saveDisplayedFileExtensions(displayedFileExtensions, to: userDefaults)
+        preferences.setScaleImagesWithWindow(scaleImagesWithWindow)
+        preferences.setDisplayedFileExtensions(displayedFileExtensions)
         quickLookBackgroundColor = quickLookBackgroundColor.normalized()
-        AppSettings.saveQuickLookBackgroundColor(quickLookBackgroundColor, to: userDefaults)
-        onScaleImagesWithWindowChange(scaleImagesWithWindow)
-        onDisplayedFileExtensionsChange(displayedFileExtensions)
-        onQuickLookBackgroundColorChange(quickLookBackgroundColor)
-        onAutomaticallyChecksForUpdatesChange(automaticallyChecksForUpdates)
-        onUpdateCheckFrequencyChange(updateCheckFrequency)
+        preferences.setQuickLookBackgroundColor(quickLookBackgroundColor)
+        updateSettings.setAutomaticallyChecksForUpdates(automaticallyChecksForUpdates)
+        updateSettings.setUpdateCheckFrequency(updateCheckFrequency)
         errorMessage = nil
         return true
     }

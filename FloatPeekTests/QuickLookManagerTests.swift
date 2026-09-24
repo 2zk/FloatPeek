@@ -57,6 +57,26 @@ final class QuickLookManagerTests: XCTestCase {
         assertPanelBackgroundColor(panel, equals: color)
     }
 
+    func testSavedBackgroundColorIsAppliedToNextPreview() throws {
+        let fileURL = try makePreviewFile()
+        let savedColor = AppPreferences.shared.quickLookBackgroundColor
+        defer {
+            AppPreferences.shared.setQuickLookBackgroundColor(savedColor)
+            cleanUpPreview(fileURL: fileURL)
+        }
+        let color = QuickLookBackgroundColor(
+            red: 0.3,
+            green: 0.5,
+            blue: 0.7
+        )
+
+        AppPreferences.shared.setQuickLookBackgroundColor(color)
+        XCTAssertTrue(QuickLookManager.shared.preview(fileURL: fileURL))
+
+        let panel = try XCTUnwrap(QLPreviewPanel.shared())
+        assertPanelBackgroundColor(panel, equals: color)
+    }
+
     func testUpdatingPreviewReappliesBackgroundAppearance() throws {
         let firstFileURL = try makePreviewFile()
         let secondFileURL = try makeTemporaryPreviewFile()

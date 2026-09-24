@@ -212,24 +212,49 @@ final class SettingsViewModelTests: XCTestCase {
         XCTAssertEqual(context.tabManager.tabs, context.viewModel.tabs)
         XCTAssertEqual(context.tabManager.selectedTabID, context.viewModel.selectedTabID)
         XCTAssertEqual(context.shortcutRegistrar.registeredShortcut, shortcut)
+        XCTAssertEqual(context.appPreferences.shortcut, shortcut)
         XCTAssertEqual(KeyboardShortcut.load(from: context.preferences), shortcut)
+        XCTAssertFalse(context.appPreferences.scaleImagesWithWindow)
         XCTAssertFalse(AppSettings.loadScaleImagesWithWindow(from: context.preferences))
+        XCTAssertEqual(context.appPreferences.displayedFileExtensions, ["png", "pdf"])
         XCTAssertEqual(
             AppSettings.loadDisplayedFileExtensions(from: context.preferences),
             ["png", "pdf"]
         )
         XCTAssertEqual(
+            context.appPreferences.quickLookBackgroundColor,
+            context.viewModel.quickLookBackgroundColor
+        )
+        XCTAssertEqual(
             AppSettings.loadQuickLookBackgroundColor(from: context.preferences),
             context.viewModel.quickLookBackgroundColor
         )
-        XCTAssertEqual(context.imageScalingRecorder.values, [false])
-        XCTAssertEqual(context.fileExtensionsRecorder.values, [["png", "pdf"]])
-        XCTAssertEqual(
-            context.quickLookBackgroundColorRecorder.values,
-            [context.viewModel.quickLookBackgroundColor]
+        XCTAssertFalse(context.updateSettings.automaticallyChecksForUpdates)
+        XCTAssertEqual(context.updateSettings.updateCheckFrequency, .monthly)
+    }
+
+    func testDraftStartsFromSavedSettings() {
+        let preferences = InMemoryPreferences()
+        let appPreferences = AppPreferences(userDefaults: preferences)
+        appPreferences.setScaleImagesWithWindow(false)
+        appPreferences.setDisplayedFileExtensions(["txt"])
+        let updateSettings = TestUpdateSettings(
+            automaticallyChecksForUpdates: false,
+            updateCheckFrequency: .daily
         )
-        XCTAssertEqual(context.automaticUpdateChecksRecorder.values, [false])
-        XCTAssertEqual(context.updateCheckFrequencyRecorder.values, [.monthly])
+
+        let context = makeContext(
+            preferences: preferences,
+            appPreferences: appPreferences,
+            updateSettings: updateSettings
+        )
+
+        XCTAssertFalse(context.viewModel.scaleImagesWithWindow)
+        XCTAssertEqual(context.viewModel.displayedFileExtensions, ["txt"])
+        XCTAssertFalse(context.viewModel.automaticallyChecksForUpdates)
+        XCTAssertEqual(context.viewModel.updateCheckFrequency, .daily)
+        XCTAssertEqual(context.viewModel.tabs, context.initialTabs)
+        XCTAssertEqual(context.viewModel.selectedTabID, context.initialTabs[0].id)
     }
 
     func testImageScalingDraftIsNotAppliedBeforeSave() {
@@ -245,20 +270,9 @@ final class SettingsViewModelTests: XCTestCase {
             blue: 0.3
         )
 
-        XCTAssertTrue(AppSettings.loadScaleImagesWithWindow(from: context.preferences))
-        XCTAssertEqual(
-            AppSettings.loadDisplayedFileExtensions(from: context.preferences),
-            AppSettings.defaultDisplayedFileExtensions
-        )
-        XCTAssertEqual(
-            AppSettings.loadQuickLookBackgroundColor(from: context.preferences),
-            .defaultColor
-        )
-        XCTAssertTrue(context.imageScalingRecorder.values.isEmpty)
-        XCTAssertTrue(context.fileExtensionsRecorder.values.isEmpty)
-        XCTAssertTrue(context.quickLookBackgroundColorRecorder.values.isEmpty)
-        XCTAssertTrue(context.automaticUpdateChecksRecorder.values.isEmpty)
-        XCTAssertTrue(context.updateCheckFrequencyRecorder.values.isEmpty)
+        assertSavedSettingsAreUnchanged(context)
+        XCTAssertTrue(context.updateSettings.automaticallyChecksForUpdates)
+        XCTAssertEqual(context.updateSettings.updateCheckFrequency, .weekly)
     }
 
     func testRegistrationFailureDoesNotApplyDraft() {
@@ -278,62 +292,73 @@ final class SettingsViewModelTests: XCTestCase {
 
         XCTAssertEqual(context.localization.language, .english)
         XCTAssertEqual(context.tabManager.tabs, context.initialTabs)
-        XCTAssertTrue(AppSettings.loadScaleImagesWithWindow(from: context.preferences))
+        assertSavedSettingsAreUnchanged(context)
+        XCTAssertNotNil(context.viewModel.errorMessage)
+    }
+
+    private func assertSavedSettingsAreUnchanged(
+        _ context: TestContext,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        XCTAssertTrue(context.appPreferences.scaleImagesWithWindow, file: file, line: line)
+        XCTAssertTrue(
+            AppSettings.loadScaleImagesWithWindow(from: context.preferences),
+            file: file,
+            line: line
+        )
+        XCTAssertEqual(
+            context.appPreferences.displayedFileExtensions,
+            AppSettings.defaultDisplayedFileExtensions,
+            file: file,
+            line: line
+        )
         XCTAssertEqual(
             AppSettings.loadDisplayedFileExtensions(from: context.preferences),
-            AppSettings.defaultDisplayedFileExtensions
+            AppSettings.defaultDisplayedFileExtensions,
+            file: file,
+            line: line
+        )
+        XCTAssertEqual(
+            context.appPreferences.quickLookBackgroundColor,
+            .defaultColor,
+            file: file,
+            line: line
         )
         XCTAssertEqual(
             AppSettings.loadQuickLookBackgroundColor(from: context.preferences),
-            .defaultColor
+            .defaultColor,
+            file: file,
+            line: line
         )
-        XCTAssertTrue(context.imageScalingRecorder.values.isEmpty)
-        XCTAssertTrue(context.fileExtensionsRecorder.values.isEmpty)
-        XCTAssertTrue(context.quickLookBackgroundColorRecorder.values.isEmpty)
-        XCTAssertNotNil(context.viewModel.errorMessage)
     }
 
     private func makeContext(
         shortcutRegistrar: TestShortcutRegistrar? = nil,
-        folderChooser: TestFolderChooser? = nil
+        folderChooser: TestFolderChooser? = nil,
+        preferences: InMemoryPreferences? = nil,
+        appPreferences: AppPreferences? = nil,
+        updateSettings: TestUpdateSettings? = nil
     ) -> TestContext {
         let shortcutRegistrar = shortcutRegistrar ?? TestShortcutRegistrar()
         let folderChooser = folderChooser ?? TestFolderChooser()
-        let preferences = InMemoryPreferences()
-        let imageScalingRecorder = TestImageScalingRecorder()
-        let fileExtensionsRecorder = TestFileExtensionsRecorder()
-        let quickLookBackgroundColorRecorder = TestQuickLookBackgroundColorRecorder()
-        let automaticUpdateChecksRecorder = TestBooleanRecorder()
-        let updateCheckFrequencyRecorder = TestUpdateCheckFrequencyRecorder()
+        let preferences = preferences ?? InMemoryPreferences()
+        let appPreferences = appPreferences ?? AppPreferences(userDefaults: preferences)
+        let updateSettings = updateSettings ?? TestUpdateSettings()
         preferences.set(AppLanguage.english.rawValue, forKey: AppSettings.languageKey)
         let localization = LocalizationManager(userDefaults: preferences)
         let tabManager = FolderTabManager(userDefaults: preferences)
         let initialTabs = [FolderTab(name: "First", folderPath: "/tmp/First")]
         tabManager.replaceTabs(initialTabs, selectedTabID: initialTabs[0].id)
         let viewModel = SettingsViewModel(
-            shortcut: AppSettings.defaultShortcut,
-            language: localization.language,
-            scaleImagesWithWindow: AppSettings.loadScaleImagesWithWindow(from: preferences),
-            displayedFileExtensions: AppSettings.loadDisplayedFileExtensions(from: preferences),
-            quickLookBackgroundColor: AppSettings.loadQuickLookBackgroundColor(
-                from: preferences
-            ),
-            tabs: initialTabs,
-            selectedTabID: initialTabs[0].id,
+            preferences: appPreferences,
             localization: localization,
             tabManager: tabManager,
+            updateSettings: updateSettings,
             shortcutRegistrar: shortcutRegistrar,
             folderChooser: folderChooser,
-            userDefaults: preferences,
             onReloadCurrentTab: {},
-            onToggleWindow: {},
-            onScaleImagesWithWindowChange: imageScalingRecorder.record,
-            onDisplayedFileExtensionsChange: fileExtensionsRecorder.record,
-            onQuickLookBackgroundColorChange: quickLookBackgroundColorRecorder.record,
-            automaticallyChecksForUpdates: true,
-            onAutomaticallyChecksForUpdatesChange: automaticUpdateChecksRecorder.record,
-            updateCheckFrequency: .weekly,
-            onUpdateCheckFrequencyChange: updateCheckFrequencyRecorder.record
+            onToggleWindow: {}
         )
         return TestContext(
             viewModel: viewModel,
@@ -342,11 +367,8 @@ final class SettingsViewModelTests: XCTestCase {
             initialTabs: initialTabs,
             shortcutRegistrar: shortcutRegistrar,
             preferences: preferences,
-            imageScalingRecorder: imageScalingRecorder,
-            fileExtensionsRecorder: fileExtensionsRecorder,
-            quickLookBackgroundColorRecorder: quickLookBackgroundColorRecorder,
-            automaticUpdateChecksRecorder: automaticUpdateChecksRecorder,
-            updateCheckFrequencyRecorder: updateCheckFrequencyRecorder
+            appPreferences: appPreferences,
+            updateSettings: updateSettings
         )
     }
 }
@@ -359,55 +381,29 @@ private struct TestContext {
     let initialTabs: [FolderTab]
     let shortcutRegistrar: TestShortcutRegistrar
     let preferences: InMemoryPreferences
-    let imageScalingRecorder: TestImageScalingRecorder
-    let fileExtensionsRecorder: TestFileExtensionsRecorder
-    let quickLookBackgroundColorRecorder: TestQuickLookBackgroundColorRecorder
-    let automaticUpdateChecksRecorder: TestBooleanRecorder
-    let updateCheckFrequencyRecorder: TestUpdateCheckFrequencyRecorder
+    let appPreferences: AppPreferences
+    let updateSettings: TestUpdateSettings
 }
 
 @MainActor
-private final class TestImageScalingRecorder {
-    private(set) var values: [Bool] = []
+private final class TestUpdateSettings: UpdateSettingsManaging {
+    private(set) var automaticallyChecksForUpdates: Bool
+    private(set) var updateCheckFrequency: UpdateCheckFrequency
 
-    func record(_ isEnabled: Bool) {
-        values.append(isEnabled)
+    init(
+        automaticallyChecksForUpdates: Bool = true,
+        updateCheckFrequency: UpdateCheckFrequency = .weekly
+    ) {
+        self.automaticallyChecksForUpdates = automaticallyChecksForUpdates
+        self.updateCheckFrequency = updateCheckFrequency
     }
-}
 
-@MainActor
-private final class TestFileExtensionsRecorder {
-    private(set) var values: [Set<String>] = []
-
-    func record(_ fileExtensions: Set<String>) {
-        values.append(fileExtensions)
+    func setAutomaticallyChecksForUpdates(_ isEnabled: Bool) {
+        automaticallyChecksForUpdates = isEnabled
     }
-}
 
-@MainActor
-private final class TestQuickLookBackgroundColorRecorder {
-    private(set) var values: [QuickLookBackgroundColor] = []
-
-    func record(_ color: QuickLookBackgroundColor) {
-        values.append(color)
-    }
-}
-
-@MainActor
-private final class TestBooleanRecorder {
-    private(set) var values: [Bool] = []
-
-    func record(_ value: Bool) {
-        values.append(value)
-    }
-}
-
-@MainActor
-private final class TestUpdateCheckFrequencyRecorder {
-    private(set) var values: [UpdateCheckFrequency] = []
-
-    func record(_ frequency: UpdateCheckFrequency) {
-        values.append(frequency)
+    func setUpdateCheckFrequency(_ frequency: UpdateCheckFrequency) {
+        updateCheckFrequency = frequency
     }
 }
 

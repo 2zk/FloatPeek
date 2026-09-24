@@ -47,10 +47,6 @@ final class HotKeyManager {
         return true
     }
 
-    func currentShortcut() -> KeyboardShortcut {
-        registeredShortcut ?? KeyboardShortcut.load()
-    }
-
     private func installEventHandlerIfNeeded() -> Bool {
         if eventHandler != nil {
             return true

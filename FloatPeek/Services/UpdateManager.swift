@@ -174,8 +174,18 @@ final class SparkleUpdateLifecycleDelegate: NSObject, SPUUpdaterDelegate {
     }
 }
 
+/// 設定画面から更新確認の設定を読み書きするためのインターフェース
 @MainActor
-final class UpdateManager: ObservableObject {
+protocol UpdateSettingsManaging: AnyObject {
+    var automaticallyChecksForUpdates: Bool { get }
+    var updateCheckFrequency: UpdateCheckFrequency { get }
+
+    func setAutomaticallyChecksForUpdates(_ isEnabled: Bool)
+    func setUpdateCheckFrequency(_ frequency: UpdateCheckFrequency)
+}
+
+@MainActor
+final class UpdateManager: ObservableObject, UpdateSettingsManaging {
     @Published private(set) var canCheckForUpdates: Bool
     @Published private(set) var automaticallyChecksForUpdates: Bool
     @Published private(set) var updateCheckFrequency: UpdateCheckFrequency
