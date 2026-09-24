@@ -1,3 +1,4 @@
+import Carbon
 import XCTest
 @testable import FloatPeek
 
@@ -188,6 +189,11 @@ final class SettingsViewModelTests: XCTestCase {
 
     func testSuccessfulSaveAppliesAllSettings() {
         let context = makeContext()
+        let shortcut = KeyboardShortcut(
+            keyCode: UInt32(kVK_ANSI_K),
+            carbonModifiers: UInt32(cmdKey | optionKey)
+        )
+        context.viewModel.shortcut = shortcut
         context.viewModel.language = .japanese
         context.viewModel.scaleImagesWithWindow = false
         context.viewModel.displayedFileExtensions = ["png", "pdf"]
@@ -205,7 +211,8 @@ final class SettingsViewModelTests: XCTestCase {
         XCTAssertEqual(context.localization.language, .japanese)
         XCTAssertEqual(context.tabManager.tabs, context.viewModel.tabs)
         XCTAssertEqual(context.tabManager.selectedTabID, context.viewModel.selectedTabID)
-        XCTAssertEqual(context.shortcutRegistrar.registeredShortcut, context.viewModel.shortcut)
+        XCTAssertEqual(context.shortcutRegistrar.registeredShortcut, shortcut)
+        XCTAssertEqual(KeyboardShortcut.load(from: context.preferences), shortcut)
         XCTAssertFalse(AppSettings.loadScaleImagesWithWindow(from: context.preferences))
         XCTAssertEqual(
             AppSettings.loadDisplayedFileExtensions(from: context.preferences),

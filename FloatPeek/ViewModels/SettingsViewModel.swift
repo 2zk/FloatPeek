@@ -182,7 +182,7 @@ final class SettingsViewModel: ObservableObject {
             return false
         }
 
-        shortcut.save()
+        shortcut.save(to: userDefaults)
         localization.language = language
         tabManager.replaceTabs(tabs, selectedTabID: selectedTabID)
         AppSettings.saveScaleImagesWithWindow(scaleImagesWithWindow, to: userDefaults)
