@@ -274,7 +274,7 @@ Quick Look 表示中に主選択が変わった場合はプレビュー対象を
 
 ## 3.10 ゴミ箱への移動
 
-`Delete`、`Forward Delete`、またはコンテキストメニューの `Move to Trash` で対象を macOS のゴミ箱へ移動する。
+`Delete`（macOS の Backspace キー）、`Forward Delete`、`Command+Delete`、`Command+Forward Delete`、またはコンテキストメニューの `Move to Trash` で対象を macOS のゴミ箱へ移動する。
 
 ```swift
 NSWorkspace.shared.recycle(fileURLs)
@@ -505,13 +505,13 @@ Actions:
 | `Return` / テンキー `Enter` | 単一選択ファイルの名前を変更 |
 | `Control+A` / `Command+A` | 表示中の全ファイルを選択 |
 | `Command+C` | 選択中ファイルをコピー |
-| `Delete` / `Forward Delete` | 選択中ファイルをゴミ箱へ移動 |
+| `Delete`（Backspace） / `Forward Delete`（どちらも `Command` 併用可） | 選択中ファイルをゴミ箱へ移動 |
 | 矢印キー | 主選択を移動 |
 | `Shift` + 矢印キー | 範囲選択を拡張・縮小 |
 
 ローカルキーイベントは `NSEvent.addLocalMonitorForEvents(matching: .keyDown)` で処理する。設定などのモーダル画面表示中はメイン画面側のキー処理を行わない。
 
-削除キーは修飾キーなし、かつキーリピートではない場合だけ処理する。フォルダ切替は表に記載した修飾キーの完全一致だけを処理する。
+削除キーは修飾キーなし、または `Command` のみで、かつキーリピートではない場合だけ処理する。`Shift`、`Option`、`Control` を含む組み合わせは処理しない。フォルダ切替は表に記載した修飾キーの完全一致だけを処理する。
 
 # 5. データモデルと永続化
 

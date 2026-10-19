@@ -141,24 +141,46 @@ final class FileBrowserActionTests: XCTestCase {
         XCTAssertEqual(viewModel.selectedFile?.id, focusedFile.id)
     }
 
-    func testDeleteKeysAreHandledWithoutModifiersOrKeyRepeat() throws {
+    func testDeleteKeysAreHandledWithoutModifiersOrWithCommandOnly() throws {
         for keyCode: UInt16 in [51, 117] {
-            let deleteKey = try XCTUnwrap(
-                makeKeyEvent(modifierFlags: [], keyCode: keyCode)
-            )
-            guard case .moveToTrash = HandledKey(event: deleteKey) else {
-                return XCTFail("Deleteキーがゴミ箱への移動として認識されない")
+            for modifiers: NSEvent.ModifierFlags in [[], .command] {
+                let deleteKey = try XCTUnwrap(
+                    makeKeyEvent(modifierFlags: modifiers, keyCode: keyCode)
+                )
+                guard case .moveToTrash = HandledKey(event: deleteKey) else {
+                    return XCTFail("Deleteキーがゴミ箱への移動として認識されない")
+                }
             }
+        }
+    }
 
-            let modifiedDelete = try XCTUnwrap(
-                makeKeyEvent(modifierFlags: .command, keyCode: keyCode)
-            )
-            XCTAssertNil(HandledKey(event: modifiedDelete))
+    func testDeleteKeysWithOtherModifiersAreNotHandled() throws {
+        let unsupportedModifiers: [NSEvent.ModifierFlags] = [
+            .shift, .option, .control,
+            [.command, .shift], [.command, .option], [.command, .control],
+            [.shift, .option], [.shift, .control], [.option, .control],
+            [.command, .shift, .option], [.command, .shift, .control],
+            [.command, .option, .control], [.shift, .option, .control],
+            [.command, .shift, .option, .control]
+        ]
+        for keyCode: UInt16 in [51, 117] {
+            for modifiers in unsupportedModifiers {
+                let modifiedDelete = try XCTUnwrap(
+                    makeKeyEvent(modifierFlags: modifiers, keyCode: keyCode)
+                )
+                XCTAssertNil(HandledKey(event: modifiedDelete))
+            }
+        }
+    }
 
-            let repeatedDelete = try XCTUnwrap(
-                makeKeyEvent(modifierFlags: [], keyCode: keyCode, isARepeat: true)
-            )
-            XCTAssertNil(HandledKey(event: repeatedDelete))
+    func testDeleteKeyRepeatsAreNotHandledWithoutModifiersOrWithCommand() throws {
+        for keyCode: UInt16 in [51, 117] {
+            for modifiers: NSEvent.ModifierFlags in [[], .command] {
+                let repeatedDelete = try XCTUnwrap(
+                    makeKeyEvent(modifierFlags: modifiers, keyCode: keyCode, isARepeat: true)
+                )
+                XCTAssertNil(HandledKey(event: repeatedDelete))
+            }
         }
     }
 

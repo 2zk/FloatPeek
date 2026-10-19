@@ -142,7 +142,7 @@ v1.xからv2.0.0へ移行するときは、上記の`brew upgrade`またはGitHu
 | Quick Look の表示・非表示 | `Space` |
 | 選択中ファイルの名前を変更 | `Return` / テンキー `Enter` |
 | 選択中ファイルをコピー | `⌘C` |
-| 選択中ファイルをゴミ箱へ移動 | `Delete` / `Forward Delete` |
+| 選択中ファイルをゴミ箱へ移動 | `Delete`（Backspace） / `Forward Delete`（どちらも `⌘` 併用可） |
 | ウィンドウを非表示 | `Escape` |
 
 ### 現在の制限
@@ -292,7 +292,7 @@ The context menu can open or preview files, copy files or paths, reveal files in
 | Rename the selected file | `Return` / numeric keypad `Enter` |
 | Select all displayed files | `Control` + `A` / `⌘A` |
 | Copy selected files | `⌘C` |
-| Move selected files to Trash | `Delete` / `Forward Delete` |
+| Move selected files to Trash | `Delete` (Backspace) / `Forward Delete`, with or without `⌘` |
 | Hide the window | `Escape` |
 
 ### Current limitations

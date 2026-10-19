@@ -102,7 +102,7 @@ enum HandledKey: Sendable {
         case kVK_Tab where modifiers == [.control, .shift]:
             self = .selectPreviousTab
         case kVK_Delete, kVK_ForwardDelete:
-            guard modifiers.isEmpty, !event.isARepeat else {
+            guard modifiers.isEmpty || modifiers == .command, !event.isARepeat else {
                 return nil
             }
             self = .moveToTrash
