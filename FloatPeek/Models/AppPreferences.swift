@@ -10,6 +10,8 @@ final class AppPreferences: ObservableObject {
     @Published private(set) var scaleImagesWithWindow: Bool
     @Published private(set) var displayedFileExtensions: Set<String>
     @Published private(set) var quickLookBackgroundColor: QuickLookBackgroundColor
+    @Published private(set) var autoHideEnabled: Bool
+    @Published private(set) var autoHideDelaySeconds: Int
 
     private let userDefaults: PreferencesStoring
 
@@ -19,6 +21,8 @@ final class AppPreferences: ObservableObject {
         scaleImagesWithWindow = AppSettings.loadScaleImagesWithWindow(from: userDefaults)
         displayedFileExtensions = AppSettings.loadDisplayedFileExtensions(from: userDefaults)
         quickLookBackgroundColor = AppSettings.loadQuickLookBackgroundColor(from: userDefaults)
+        autoHideEnabled = AppSettings.loadAutoHideEnabled(from: userDefaults)
+        autoHideDelaySeconds = AppSettings.loadAutoHideDelaySeconds(from: userDefaults)
     }
 
     func setShortcut(_ shortcut: KeyboardShortcut) {
@@ -40,5 +44,15 @@ final class AppPreferences: ObservableObject {
         let normalizedColor = color.normalized()
         AppSettings.saveQuickLookBackgroundColor(normalizedColor, to: userDefaults)
         quickLookBackgroundColor = normalizedColor
+    }
+
+    func setAutoHideEnabled(_ isEnabled: Bool) {
+        AppSettings.saveAutoHideEnabled(isEnabled, to: userDefaults)
+        autoHideEnabled = isEnabled
+    }
+
+    func setAutoHideDelaySeconds(_ seconds: Int) {
+        AppSettings.saveAutoHideDelaySeconds(seconds, to: userDefaults)
+        autoHideDelaySeconds = AppSettings.clampedAutoHideDelaySeconds(seconds)
     }
 }

@@ -109,6 +109,7 @@ v1.xからv2.0.0へ移行するときは、上記の`brew upgrade`またはGitHu
 - 現在のフォルダの手動再読み込み
 - ウィンドウ幅に合わせた画像・PDF拡大の有効・無効
 - 表示対象の拡張子
+- フォーカスが外れてから指定秒数（1〜600秒）後にウィンドウを自動で隠すオプション
 - 表示言語（システム設定、英語、日本語）
 - グローバルショートカット
 
@@ -258,6 +259,7 @@ The Settings window provides:
 - Manual reload of the current folder
 - Image and PDF scaling with the window width
 - Displayed file extensions
+- Optional auto-hide of the window a set number of seconds (1–600) after FloatPeek loses focus
 - Language selection: System Default, English, or Japanese
 - Global shortcut recording
 

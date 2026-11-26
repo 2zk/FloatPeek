@@ -25,6 +25,8 @@ final class SettingsViewModel: ObservableObject {
     @Published var scaleImagesWithWindow: Bool
     @Published var displayedFileExtensions: Set<String>
     @Published var quickLookBackgroundColor: QuickLookBackgroundColor
+    @Published var autoHideEnabled: Bool
+    @Published var autoHideDelaySeconds: Int
     @Published var automaticallyChecksForUpdates: Bool
     @Published var updateCheckFrequency: UpdateCheckFrequency
     @Published var tabs: [FolderTab]
@@ -60,6 +62,8 @@ final class SettingsViewModel: ObservableObject {
         scaleImagesWithWindow = preferences.scaleImagesWithWindow
         displayedFileExtensions = preferences.displayedFileExtensions
         quickLookBackgroundColor = preferences.quickLookBackgroundColor
+        autoHideEnabled = preferences.autoHideEnabled
+        autoHideDelaySeconds = preferences.autoHideDelaySeconds
         automaticallyChecksForUpdates = updateSettings.automaticallyChecksForUpdates
         updateCheckFrequency = updateSettings.updateCheckFrequency
         tabs = tabManager.tabs
@@ -169,6 +173,9 @@ final class SettingsViewModel: ObservableObject {
         preferences.setDisplayedFileExtensions(displayedFileExtensions)
         quickLookBackgroundColor = quickLookBackgroundColor.normalized()
         preferences.setQuickLookBackgroundColor(quickLookBackgroundColor)
+        autoHideDelaySeconds = AppSettings.clampedAutoHideDelaySeconds(autoHideDelaySeconds)
+        preferences.setAutoHideDelaySeconds(autoHideDelaySeconds)
+        preferences.setAutoHideEnabled(autoHideEnabled)
         updateSettings.setAutomaticallyChecksForUpdates(automaticallyChecksForUpdates)
         updateSettings.setUpdateCheckFrequency(updateCheckFrequency)
         errorMessage = nil

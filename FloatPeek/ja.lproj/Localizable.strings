@@ -33,6 +33,11 @@
 "File Name" = "ファイル名";
 "Display" = "表示";
 "Scale images and PDFs with window width" = "ウィンドウ幅に合わせて画像・PDFを拡大";
+"Window" = "ウィンドウ";
+"Automatically hide when inactive" = "フォーカスが外れたら自動で隠す";
+"Hide after" = "非表示まで";
+"Seconds" = "秒数";
+"seconds" = "秒";
 "Displayed File Extensions" = "表示するファイル拡張子";
 "Images and PDFs" = "画像・PDF";
 "Other Files" = "その他のファイル";

@@ -387,6 +387,16 @@ window.isReleasedWhenClosed = false
 
 フルスクリーンアプリ、Mission Control、複数 Spaces をまたぐ完全な最前面動作は保証しない。
 
+### 3.14.1 自動非表示
+
+設定の `Automatically hide when inactive` が有効な場合、FloatPeek が非アクティブになってから（`NSApplication.didResignActiveNotification`）設定秒数後にウィンドウを非表示にする。秒数は 1〜600 秒、既定は 10 秒、オプション自体の既定は無効とする。
+
+- 判定はキーウィンドウ単位ではなくアプリ単位で行う。Quick Look、設定シート、名前変更中はアプリがアクティブなのでタイマーは動かない
+- アプリが再びアクティブになったとき、ウィンドウを表示・非表示・最小化・クローズしたとき、設定を無効にしたときはタイマーを取り消す
+- 経過時点でマウスポインタがウィンドウ上にある、またはマウスボタンが押されている場合は隠さず、1秒後に再判定する（一覧は `acceptsFirstMouse` により非アクティブのままドラッグできるため）
+- 非表示処理は `WindowManager.hideWindow()` を使い、フレーム保存、Quick Look クローズ、監視停止を通常の非表示と共通にする
+- タイマー制御は `AutoHideController` が担い、`WindowManager` がアプリのアクティブ状態の通知を転送する
+
 ## 3.15 表示言語
 
 対応言語:
@@ -440,7 +450,7 @@ System Default では macOS の優先言語から英語または日本語を選�
 画面上部は2カラムで構成する。
 
 - 左カラム: フォルダ設定。登録件数が表示領域を超える場合は一覧だけを縦スクロールする
-- 右カラム: Display、Language、Global Shortcut、Updates
+- 右カラム: Display、Window、Language、Global Shortcut、Updates
 - 画面全体はスクロールしない
 - Actions は両カラムの下部へ固定する
 
@@ -448,10 +458,11 @@ System Default では macOS の優先言語から英語または日本語を選�
 
 1. Folders
 2. Display
-3. Language
-4. Global Shortcut
-5. Updates
-6. Actions
+3. Window
+4. Language
+5. Global Shortcut
+6. Updates
+7. Actions
 
 Folders:
 
@@ -469,6 +480,11 @@ Display:
 - `Scale images and PDFs with window width`
 - 「画像・PDF」と「その他のファイル」に分けた4列の拡張子チェックボックス
 - 各グループの全拡張子を一括で選択・解除する操作
+
+Window:
+
+- `Automatically hide when inactive`
+- 非表示までの秒数（数値入力とステッパー、1〜600秒。無効時は操作不可）
 
 Actions:
 
@@ -578,6 +594,8 @@ Carbon 用キーコードと修飾キーを保持し、表示名生成、`NSEven
 | `shortcutModifiers` | Int | Command + Shift |
 | `language` | String | `system` |
 | `windowFrame` | Rect String | 未保存時は初期フレーム |
+| `autoHideEnabled` | Bool | `false` |
+| `autoHideDelaySeconds` | Int | `10`。読込・保存時に 1〜600 へ補正 |
 
 `displayedFileExtensions` の空配列は未保存と区別し、「すべて非選択」として復元する。未知の拡張子は読込時に対応集合との積集合から除外する。
 
@@ -634,6 +652,7 @@ Carbon 用キーコードと修飾キーを保持し、表示名生成、`NSEven
 | `HotKeyManager` | Carbon ショートカット登録・復元 |
 | `QuickLookManager` | `QLPreviewPanel` の表示・更新・終了 |
 | `WindowManager` | 表示・非表示、floating 設定、フレーム保存・補正 |
+| `AutoHideController` | 非アクティブ化後の自動非表示タイマー |
 | `FolderManager` | `NSOpenPanel` によるフォルダ選択 |
 | `AppCoordinator` | ウィンドウ可視性と設定表示のイベント連携 |
 | `KeyboardEventBridge` | ローカルキーイベントの分類と通知 |
@@ -807,7 +826,8 @@ env DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
 | `FileBrowserActionTests` | コピー、ゴミ箱、コンテキスト、キー操作 |
 | `QuickLookManagerTests` | 表示終了条件 |
 | `ThumbnailProviderTests` | aspect fit |
-| `SettingsViewModelTests` | 下書き、保存、失敗時非反映、拡張子設定 |
+| `SettingsViewModelTests` | 下書き、保存、失敗時非反映、拡張子設定、自動非表示設定 |
+| `AutoHideControllerTests` | 自動非表示タイマーの開始、取消、再判定 |
 | `UpdateManagerTests` | 更新確認の可否、手動確認の呼び出し |
 
 テスト環境では `InMemoryPreferences` を使用し、ユーザーの設定を変更しない。
@@ -961,6 +981,7 @@ git push origin v2.0.0
 - ショートカットを変更・保存できる
 - 登録失敗時に旧ショートカットと他設定を維持できる
 - ウィンドウ位置・サイズを保存し、画面内へ補正して復元できる
+- 自動非表示を有効にすると、フォーカスが外れてから設定秒数後にウィンドウが隠れ、その前に戻れば隠れない
 - 英語・日本語を切り替え、再起動後に復元できる
 - 設定の `Cancel` で下書きを破棄できる
 

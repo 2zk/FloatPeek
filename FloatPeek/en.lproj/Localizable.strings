@@ -33,6 +33,11 @@
 "File Name" = "File Name";
 "Display" = "Display";
 "Scale images and PDFs with window width" = "Scale images and PDFs with window width";
+"Window" = "Window";
+"Automatically hide when inactive" = "Automatically hide when inactive";
+"Hide after" = "Hide after";
+"Seconds" = "Seconds";
+"seconds" = "seconds";
 "Displayed File Extensions" = "Displayed File Extensions";
 "Images and PDFs" = "Images and PDFs";
 "Other Files" = "Other Files";

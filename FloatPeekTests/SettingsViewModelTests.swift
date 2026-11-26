@@ -282,6 +282,43 @@ final class SettingsViewModelTests: XCTestCase {
         XCTAssertEqual(context.updateSettings.updateCheckFrequency, .monthly)
     }
 
+    func testAutoHideDefaultsToDisabledAndClampsDelay() {
+        let preferences = InMemoryPreferences()
+
+        XCTAssertFalse(AppSettings.loadAutoHideEnabled(from: preferences))
+        XCTAssertEqual(
+            AppSettings.loadAutoHideDelaySeconds(from: preferences),
+            AppSettings.defaultAutoHideDelaySeconds
+        )
+
+        AppSettings.saveAutoHideDelaySeconds(0, to: preferences)
+        XCTAssertEqual(AppSettings.loadAutoHideDelaySeconds(from: preferences), 1)
+
+        preferences.set(10_000, forKey: AppSettings.autoHideDelaySecondsKey)
+        XCTAssertEqual(AppSettings.loadAutoHideDelaySeconds(from: preferences), 600)
+    }
+
+    func testAutoHideDraftIsAppliedOnlyOnSave() {
+        let context = makeContext()
+
+        context.viewModel.autoHideEnabled = true
+        context.viewModel.autoHideDelaySeconds = 999
+
+        XCTAssertFalse(context.appPreferences.autoHideEnabled)
+        XCTAssertEqual(
+            context.appPreferences.autoHideDelaySeconds,
+            AppSettings.defaultAutoHideDelaySeconds
+        )
+
+        XCTAssertTrue(context.viewModel.save())
+
+        XCTAssertTrue(context.appPreferences.autoHideEnabled)
+        XCTAssertEqual(context.appPreferences.autoHideDelaySeconds, 600)
+        XCTAssertEqual(context.viewModel.autoHideDelaySeconds, 600)
+        XCTAssertTrue(AppSettings.loadAutoHideEnabled(from: context.preferences))
+        XCTAssertEqual(AppSettings.loadAutoHideDelaySeconds(from: context.preferences), 600)
+    }
+
     func testDraftStartsFromSavedSettings() {
         let preferences = InMemoryPreferences()
         let appPreferences = AppPreferences(userDefaults: preferences)

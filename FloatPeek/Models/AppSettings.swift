@@ -42,6 +42,10 @@ struct AppSettings {
     static let displayedFileExtensionsMigrationVersionKey =
         "displayedFileExtensionsMigrationVersion"
     static let quickLookBackgroundColorComponentsKey = "quickLookBackgroundColorComponents"
+    static let autoHideEnabledKey = "autoHideEnabled"
+    static let autoHideDelaySecondsKey = "autoHideDelaySeconds"
+    static let defaultAutoHideDelaySeconds = 10
+    static let autoHideDelayRange = 1...600
     private static let legacyQuickLookBorderColorComponentsKey =
         "quickLookBorderColorComponents"
 
@@ -101,6 +105,37 @@ struct AppSettings {
         to userDefaults: PreferencesStoring = AppEnvironment.preferences
     ) {
         userDefaults.set(isEnabled, forKey: scaleImagesWithWindowKey)
+    }
+
+    static func loadAutoHideEnabled(
+        from userDefaults: PreferencesStoring = AppEnvironment.preferences
+    ) -> Bool {
+        userDefaults.object(forKey: autoHideEnabledKey) as? Bool ?? false
+    }
+
+    static func saveAutoHideEnabled(
+        _ isEnabled: Bool,
+        to userDefaults: PreferencesStoring = AppEnvironment.preferences
+    ) {
+        userDefaults.set(isEnabled, forKey: autoHideEnabledKey)
+    }
+
+    static func loadAutoHideDelaySeconds(
+        from userDefaults: PreferencesStoring = AppEnvironment.preferences
+    ) -> Int {
+        let storedSeconds = userDefaults.object(forKey: autoHideDelaySecondsKey) as? Int
+        return clampedAutoHideDelaySeconds(storedSeconds ?? defaultAutoHideDelaySeconds)
+    }
+
+    static func saveAutoHideDelaySeconds(
+        _ seconds: Int,
+        to userDefaults: PreferencesStoring = AppEnvironment.preferences
+    ) {
+        userDefaults.set(clampedAutoHideDelaySeconds(seconds), forKey: autoHideDelaySecondsKey)
+    }
+
+    static func clampedAutoHideDelaySeconds(_ seconds: Int) -> Int {
+        min(max(seconds, autoHideDelayRange.lowerBound), autoHideDelayRange.upperBound)
     }
 
     static func loadDisplayedFileExtensions(

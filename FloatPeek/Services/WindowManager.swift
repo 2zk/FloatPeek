@@ -9,16 +9,31 @@ final class WindowManager: NSObject, NSWindowDelegate {
     private let coordinator: AppCoordinator
     private let quickLookManager: QuickLookManager
     private weak var managedWindow: NSWindow?
+    private var autoHideController: AutoHideController?
+    private var applicationObservers: [NSObjectProtocol] = []
 
     init(
         userDefaults: PreferencesStoring = AppEnvironment.preferences,
         coordinator: AppCoordinator = .shared,
-        quickLookManager: QuickLookManager = .shared
+        quickLookManager: QuickLookManager = .shared,
+        preferences: AppPreferences = .shared,
+        notificationCenter: NotificationCenter = .default
     ) {
         self.userDefaults = userDefaults
         self.coordinator = coordinator
         self.quickLookManager = quickLookManager
         super.init()
+
+        autoHideController = AutoHideController(
+            preferences: preferences,
+            canHide: { [weak self] in
+                self?.canAutoHide() ?? false
+            },
+            hide: { [weak self] in
+                self?.autoHideWindow()
+            }
+        )
+        observeApplicationActivation(notificationCenter: notificationCenter)
     }
 
     func configure(window: NSWindow) {
@@ -37,6 +52,7 @@ final class WindowManager: NSObject, NSWindowDelegate {
     }
 
     func windowShouldClose(_ sender: NSWindow) -> Bool {
+        autoHideController?.cancel()
         saveFrame(of: sender)
         notifyMonitoringShouldStop()
         sender.orderOut(nil)
@@ -44,6 +60,7 @@ final class WindowManager: NSObject, NSWindowDelegate {
     }
 
     func windowDidMiniaturize(_ notification: Notification) {
+        autoHideController?.cancel()
         notifyMonitoringShouldStop()
     }
 
@@ -75,6 +92,7 @@ final class WindowManager: NSObject, NSWindowDelegate {
             return
         }
 
+        autoHideController?.cancel()
         configure(window: window)
         applySavedOrDefaultFrame(to: window)
         window.makeKeyAndOrderFront(nil)
@@ -83,6 +101,7 @@ final class WindowManager: NSObject, NSWindowDelegate {
     }
 
     func hideWindow() {
+        autoHideController?.cancel()
         guard let window = resolvedWindow() else {
             return
         }
@@ -90,6 +109,46 @@ final class WindowManager: NSObject, NSWindowDelegate {
         saveFrame(of: window)
         notifyMonitoringShouldStop()
         window.orderOut(nil)
+    }
+
+    private func observeApplicationActivation(notificationCenter: NotificationCenter) {
+        let resignObserver = notificationCenter.addObserver(
+            forName: NSApplication.didResignActiveNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.autoHideController?.appDidResignActive()
+            }
+        }
+        let becomeObserver = notificationCenter.addObserver(
+            forName: NSApplication.didBecomeActiveNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.autoHideController?.appDidBecomeActive()
+            }
+        }
+        applicationObservers = [resignObserver, becomeObserver]
+    }
+
+    /// ポインタがウィンドウ上にある間やドラッグ中は隠さない
+    private func canAutoHide() -> Bool {
+        guard let window = managedWindow, window.isVisible else {
+            return true
+        }
+
+        return NSEvent.pressedMouseButtons == 0
+            && !NSMouseInRect(NSEvent.mouseLocation, window.frame, false)
+    }
+
+    private func autoHideWindow() {
+        guard managedWindow?.isVisible == true else {
+            return
+        }
+
+        hideWindow()
     }
 
     private func notifyWindowBecameVisible() {

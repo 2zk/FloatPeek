@@ -48,6 +48,10 @@ struct SettingsView: View {
 
             Divider()
 
+            windowSection
+
+            Divider()
+
             languageSection
 
             Divider()
@@ -157,6 +161,50 @@ struct SettingsView: View {
                 supportsOpacity: false
             )
         }
+    }
+
+    private var windowSection: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(localization.localized("Window"))
+                .font(.headline)
+
+            Toggle(
+                localization.localized("Automatically hide when inactive"),
+                isOn: $viewModel.autoHideEnabled
+            )
+            .toggleStyle(.checkbox)
+
+            HStack(spacing: 6) {
+                Text(localization.localized("Hide after"))
+
+                TextField(
+                    localization.localized("Seconds"),
+                    value: autoHideDelayBinding,
+                    format: .number.grouping(.never)
+                )
+                .labelsHidden()
+                .multilineTextAlignment(.trailing)
+                .frame(width: 56)
+
+                Stepper(
+                    localization.localized("Seconds"),
+                    value: $viewModel.autoHideDelaySeconds,
+                    in: AppSettings.autoHideDelayRange
+                )
+                .labelsHidden()
+
+                Text(localization.localized("seconds"))
+            }
+            .padding(.leading, 20)
+            .disabled(!viewModel.autoHideEnabled)
+        }
+    }
+
+    private var autoHideDelayBinding: Binding<Int> {
+        Binding(
+            get: { viewModel.autoHideDelaySeconds },
+            set: { viewModel.autoHideDelaySeconds = AppSettings.clampedAutoHideDelaySeconds($0) }
+        )
     }
 
     private var languageSection: some View {

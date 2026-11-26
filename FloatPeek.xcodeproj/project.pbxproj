@@ -51,6 +51,8 @@
 		F10000032C39000100A00001 /* AppCoordinatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000042C39000100A00001 /* AppCoordinatorTests.swift */; };
 		F20000012C39000100A00001 /* UpdateManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000022C39000100A00001 /* UpdateManager.swift */; };
 		F20000032C39000100A00001 /* UpdateManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000042C39000100A00001 /* UpdateManagerTests.swift */; };
+		F30000012C39000100A00001 /* AutoHideController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30000022C39000100A00001 /* AutoHideController.swift */; };
+		F30000032C39000100A00001 /* AutoHideControllerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30000042C39000100A00001 /* AutoHideControllerTests.swift */; };
 		F20000052C39000100A00001 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = F20000072C39000100A00001 /* Sparkle */; };
 /* End PBXBuildFile section */
 
@@ -112,6 +114,8 @@
 		F10000042C39000100A00001 /* AppCoordinatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppCoordinatorTests.swift; sourceTree = "<group>"; };
 		F20000022C39000100A00001 /* UpdateManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateManager.swift; sourceTree = "<group>"; };
 		F20000042C39000100A00001 /* UpdateManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateManagerTests.swift; sourceTree = "<group>"; };
+		F30000022C39000100A00001 /* AutoHideController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoHideController.swift; sourceTree = "<group>"; };
+		F30000042C39000100A00001 /* AutoHideControllerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoHideControllerTests.swift; sourceTree = "<group>"; };
 		F20000082C39000100A00001 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		F20000092C39000100A00001 /* FloatPeek.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = FloatPeek.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -199,6 +203,7 @@
 				95B574942C39000100A00001 /* WindowManager.swift */,
 				95B574952C39000100A00001 /* HotKeyManager.swift */,
 				F20000022C39000100A00001 /* UpdateManager.swift */,
+				F30000022C39000100A00001 /* AutoHideController.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -241,6 +246,7 @@
 				E10000042C39000100A00001 /* FileSelectionTests.swift */,
 				F10000042C39000100A00001 /* AppCoordinatorTests.swift */,
 				F20000042C39000100A00001 /* UpdateManagerTests.swift */,
+				F30000042C39000100A00001 /* AutoHideControllerTests.swift */,
 			);
 			path = FloatPeekTests;
 			sourceTree = "<group>";
@@ -384,6 +390,7 @@
 				95B574982C39000100A00001 /* ShortcutRecorderView.swift in Sources */,
 				95B5749B2C39000100A00001 /* FileDragInteractionView.swift in Sources */,
 				F20000012C39000100A00001 /* UpdateManager.swift in Sources */,
+				F30000012C39000100A00001 /* AutoHideController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -401,6 +408,7 @@
 				E10000032C39000100A00001 /* FileSelectionTests.swift in Sources */,
 				F10000032C39000100A00001 /* AppCoordinatorTests.swift in Sources */,
 				F20000032C39000100A00001 /* UpdateManagerTests.swift in Sources */,
+				F30000032C39000100A00001 /* AutoHideControllerTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
