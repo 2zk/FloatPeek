@@ -49,4 +49,35 @@ final class AppCoordinatorTests: XCTestCase {
         )
         XCTAssertTrue(coordinator.isWindowVisible)
     }
+
+    func testAutoHideIsPostponedWhileQuickLookIsVisible() {
+        XCTAssertFalse(shouldAutoHide(isPreviewing: true))
+    }
+
+    func testAutoHideIsAllowedWhenWindowIsIdle() {
+        XCTAssertTrue(shouldAutoHide())
+    }
+
+    func testAutoHideIsPostponedWhilePointerIsInWindowOrMouseIsPressed() {
+        XCTAssertFalse(shouldAutoHide(isPointerInWindow: true))
+        XCTAssertFalse(shouldAutoHide(isMouseButtonPressed: true))
+    }
+
+    func testAutoHideDoesNotWaitForPreviewWhenWindowIsHidden() {
+        XCTAssertTrue(shouldAutoHide(isWindowVisible: false, isPreviewing: true))
+    }
+
+    private func shouldAutoHide(
+        isWindowVisible: Bool = true,
+        isPreviewing: Bool = false,
+        isPointerInWindow: Bool = false,
+        isMouseButtonPressed: Bool = false
+    ) -> Bool {
+        WindowManager.shouldAutoHide(
+            isWindowVisible: isWindowVisible,
+            isPreviewing: isPreviewing,
+            isPointerInWindow: isPointerInWindow,
+            isMouseButtonPressed: isMouseButtonPressed
+        )
+    }
 }

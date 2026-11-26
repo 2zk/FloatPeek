@@ -133,14 +133,31 @@ final class WindowManager: NSObject, NSWindowDelegate {
         applicationObservers = [resignObserver, becomeObserver]
     }
 
-    /// ポインタがウィンドウ上にある間やドラッグ中は隠さない
-    private func canAutoHide() -> Bool {
-        guard let window = managedWindow, window.isVisible else {
+    /// Quick Look 表示中、ポインタがウィンドウ上にある間、ドラッグ中は隠さない
+    static func shouldAutoHide(
+        isWindowVisible: Bool,
+        isPreviewing: Bool,
+        isPointerInWindow: Bool,
+        isMouseButtonPressed: Bool
+    ) -> Bool {
+        guard isWindowVisible else {
             return true
         }
 
-        return NSEvent.pressedMouseButtons == 0
-            && !NSMouseInRect(NSEvent.mouseLocation, window.frame, false)
+        return !isPreviewing && !isPointerInWindow && !isMouseButtonPressed
+    }
+
+    private func canAutoHide() -> Bool {
+        guard let window = managedWindow else {
+            return true
+        }
+
+        return Self.shouldAutoHide(
+            isWindowVisible: window.isVisible,
+            isPreviewing: quickLookManager.isPreviewing,
+            isPointerInWindow: NSMouseInRect(NSEvent.mouseLocation, window.frame, false),
+            isMouseButtonPressed: NSEvent.pressedMouseButtons != 0
+        )
     }
 
     private func autoHideWindow() {
