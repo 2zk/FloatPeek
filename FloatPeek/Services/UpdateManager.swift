@@ -149,16 +149,37 @@ final class SparkleUpdateDriver: UpdateDriving {
 
 @MainActor
 final class SparkleUpdateLifecycleDelegate: NSObject, SPUUpdaterDelegate {
+    /// シートが残っていた場合に終了要求を待つ間隔と回数
+    static let sheetRetryInterval: TimeInterval = 0.2
+    static let maxSheetRetries = 10
+
     private let dismissSettings: () -> Void
+    private let endAttachedSheets: () -> Void
+    private let hasAttachedSheets: () -> Bool
+    private let schedule: (TimeInterval, @escaping @MainActor () -> Void) -> Void
     private let requestApplicationTermination: () -> Void
 
     init(
         dismissSettings: @escaping () -> Void,
+        endAttachedSheets: @escaping () -> Void = {
+            SparkleUpdateLifecycleDelegate.endAttachedSheets(in: NSApp.windows)
+        },
+        hasAttachedSheets: @escaping () -> Bool = {
+            NSApp.windows.contains { $0.attachedSheet != nil }
+        },
+        schedule: @escaping (TimeInterval, @escaping @MainActor () -> Void) -> Void = { delay, action in
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                MainActor.assumeIsolated(action)
+            }
+        },
         requestApplicationTermination: @escaping () -> Void = {
             NSApp.terminate(nil)
         }
     ) {
         self.dismissSettings = dismissSettings
+        self.endAttachedSheets = endAttachedSheets
+        self.hasAttachedSheets = hasAttachedSheets
+        self.schedule = schedule
         self.requestApplicationTermination = requestApplicationTermination
     }
 
@@ -166,10 +187,42 @@ final class SparkleUpdateLifecycleDelegate: NSObject, SPUUpdaterDelegate {
         requestTerminationForRelaunch()
     }
 
+    /// シートが開いていると AppKit が終了を中止するため、閉じてから終了を要求する
     func requestTerminationForRelaunch() {
         dismissSettings()
-        DispatchQueue.main.async { [weak self] in
-            self?.requestApplicationTermination()
+        endAttachedSheets()
+        schedule(0) { [weak self] in
+            self?.requestTerminationWhenSheetsClosed(remainingRetries: Self.maxSheetRetries)
+        }
+    }
+
+    /// 開いているシートを、シート上のシートから順に閉じる
+    static func endAttachedSheets(in windows: [NSWindow]) {
+        for window in windows {
+            endAttachedSheet(of: window)
+        }
+    }
+
+    private static func endAttachedSheet(of window: NSWindow) {
+        guard let sheet = window.attachedSheet else {
+            return
+        }
+
+        endAttachedSheet(of: sheet)
+        window.endSheet(sheet)
+        sheet.orderOut(nil)
+    }
+
+    private func requestTerminationWhenSheetsClosed(remainingRetries: Int) {
+        endAttachedSheets()
+
+        guard hasAttachedSheets(), remainingRetries > 0 else {
+            requestApplicationTermination()
+            return
+        }
+
+        schedule(Self.sheetRetryInterval) { [weak self] in
+            self?.requestTerminationWhenSheetsClosed(remainingRetries: remainingRetries - 1)
         }
     }
 }

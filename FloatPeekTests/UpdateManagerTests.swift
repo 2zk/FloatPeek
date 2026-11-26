@@ -1,3 +1,4 @@
+import AppKit
 import Combine
 import XCTest
 @testable import FloatPeek
@@ -77,23 +78,95 @@ final class UpdateManagerTests: XCTestCase {
         XCTAssertEqual(manager.lastUpdateCheckDate, date)
     }
 
-    func testUpdateRelaunchDismissesSettingsBeforeRequestingApplicationTermination() async {
+    func testUpdateRelaunchClosesSheetsBeforeRequestingApplicationTermination() {
         var events: [String] = []
-        let terminationRequest = expectation(description: "アプリ終了を要求する")
+        let scheduler = ImmediateRelaunchScheduler()
         let delegate = SparkleUpdateLifecycleDelegate(
-            dismissSettings: {
-                events.append("dismiss settings")
-            },
-            requestApplicationTermination: {
-                events.append("request termination")
-                terminationRequest.fulfill()
-            }
+            dismissSettings: { events.append("dismiss settings") },
+            endAttachedSheets: { events.append("end sheets") },
+            hasAttachedSheets: { false },
+            schedule: scheduler.schedule,
+            requestApplicationTermination: { events.append("request termination") }
         )
 
         delegate.requestTerminationForRelaunch()
-        await fulfillment(of: [terminationRequest], timeout: 1)
+        XCTAssertEqual(events, ["dismiss settings", "end sheets"])
 
-        XCTAssertEqual(events, ["dismiss settings", "request termination"])
+        scheduler.runAll()
+        XCTAssertEqual(
+            events,
+            ["dismiss settings", "end sheets", "end sheets", "request termination"]
+        )
+    }
+
+    func testUpdateRelaunchWaitsUntilSheetIsGone() {
+        var remainingSheetChecks = 2
+        var terminationCount = 0
+        let scheduler = ImmediateRelaunchScheduler()
+        let delegate = SparkleUpdateLifecycleDelegate(
+            dismissSettings: {},
+            endAttachedSheets: {},
+            hasAttachedSheets: {
+                defer { remainingSheetChecks -= 1 }
+                return remainingSheetChecks > 0
+            },
+            schedule: scheduler.schedule,
+            requestApplicationTermination: { terminationCount += 1 }
+        )
+
+        delegate.requestTerminationForRelaunch()
+        scheduler.runAll()
+
+        XCTAssertEqual(terminationCount, 1)
+        XCTAssertEqual(
+            scheduler.delays,
+            [
+                0,
+                SparkleUpdateLifecycleDelegate.sheetRetryInterval,
+                SparkleUpdateLifecycleDelegate.sheetRetryInterval
+            ]
+        )
+    }
+
+    func testUpdateRelaunchRequestsTerminationAfterRetryLimit() {
+        var terminationCount = 0
+        let scheduler = ImmediateRelaunchScheduler()
+        let delegate = SparkleUpdateLifecycleDelegate(
+            dismissSettings: {},
+            endAttachedSheets: {},
+            hasAttachedSheets: { true },
+            schedule: scheduler.schedule,
+            requestApplicationTermination: { terminationCount += 1 }
+        )
+
+        delegate.requestTerminationForRelaunch()
+        scheduler.runAll()
+
+        XCTAssertEqual(terminationCount, 1)
+        XCTAssertEqual(scheduler.delays.count, SparkleUpdateLifecycleDelegate.maxSheetRetries + 1)
+    }
+
+    func testEndAttachedSheetsClosesSheetAttachedToWindow() {
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 200, height: 200),
+            styleMask: [.titled],
+            backing: .buffered,
+            defer: false
+        )
+        let sheet = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 100, height: 100),
+            styleMask: [.titled],
+            backing: .buffered,
+            defer: false
+        )
+        window.orderFront(nil)
+        defer { window.orderOut(nil) }
+        window.beginSheet(sheet)
+        XCTAssertNotNil(window.attachedSheet)
+
+        SparkleUpdateLifecycleDelegate.endAttachedSheets(in: [window])
+
+        XCTAssertNil(window.attachedSheet)
     }
 
     func testAppBundleUsesApprovalRequiredUpdateConfiguration() {
@@ -179,5 +252,23 @@ private final class FakeUpdateDriver: UpdateDriving {
         _ handler: @escaping @MainActor (Date?) -> Void
     ) -> AnyCancellable {
         $lastUpdateCheckDate.sink(receiveValue: handler)
+    }
+}
+
+/// 予約された処理を記録し、テストから順に実行する
+@MainActor
+private final class ImmediateRelaunchScheduler {
+    private(set) var delays: [TimeInterval] = []
+    private var pending: [@MainActor () -> Void] = []
+
+    func schedule(_ delay: TimeInterval, _ action: @escaping @MainActor () -> Void) {
+        delays.append(delay)
+        pending.append(action)
+    }
+
+    func runAll() {
+        while !pending.isEmpty {
+            pending.removeFirst()()
+        }
     }
 }
